@@ -1,80 +1,92 @@
 # Crono
 
-Crono 是一款 local-first 桌面 API 客户端，使用 Vue 3、Tauri 2 和 Rust
-构建。当前 MVP 已覆盖本地数据持久化、请求编辑、环境变量、常用认证方式、
-请求发送以及响应历史查看。
+[English](./README.md) | [简体中文](./README.zh-CN.md)
 
-> 当前版本为 `0.1.0` 开发预览版。数据默认保存在本机，不包含账号、团队协作
-> 或云同步。
+Crono is a local-first desktop API client built with Vue 3, Tauri 2, and Rust.
+The current MVP covers local persistence, request editing, environments,
+authentication, request execution, and response history.
 
-## MVP 功能
+> Version `0.1.0` is a development preview. Data stays on your machine by
+> default; accounts, team collaboration, and cloud sync are not included.
 
-- Workspace、Folder、Environment 和 HTTP Request 的本地 CRUD。
-- SQLite WAL 持久化、向前迁移和多窗口模型同步。
-- GET、POST 及自定义 HTTP method。
-- Query、Header、Text/JSON Body 和请求超时。
-- 环境变量继承，以及 `{{$uuid}}`、`{{$timestamp}}` 内建模板。
-- Basic、Bearer（支持自定义前缀）和 API Key 认证。
-- 请求取消、流式响应正文落盘、状态/Headers/JSON/Text 查看。
-- 请求历史和基础 Timeline。
-- 简体中文、英文、明暗外观和多套内置主题。
+![Crono desktop API client showing a request and JSON response](./imgs/screenshot.png)
 
-当前 MVP 暂不支持 Form、Multipart、Binary、Cookie Jar 行为、Redirect
-控制、Proxy/TLS 配置、下载和大响应分页。这些能力属于后续增量，详见
-[实施状态](./docs/IMPLEMENTATION_STATUS.md)。
+## MVP Features
 
-## 技术栈
+- Local CRUD for workspaces, folders, environments, and HTTP requests.
+- SQLite WAL persistence, forward-only migrations, and multi-window model sync.
+- GET, POST, and arbitrary HTTP methods.
+- Query parameters, headers, Text/JSON bodies, and request timeouts.
+- Inherited environment variables plus `{{$uuid}}` and `{{$timestamp}}`
+  built-in templates.
+- Basic, Bearer with a custom prefix, and API Key authentication.
+- Request cancellation, streamed response-body storage, and
+  status/header/JSON/text viewers.
+- Request history and a basic timeline.
+- English and Simplified Chinese interfaces, light/dark appearance, and
+  multiple built-in themes.
 
-- 桌面端：Tauri 2
-- 前端：Vue 3、TypeScript、Vite、Pinia、Vue Router
-- 后端：Rust、Tokio、Reqwest
-- 存储：SQLite（Rusqlite）
-- 编辑与展示：CodeMirror 6
-- 测试：Vitest、Cargo test
+The current MVP does not yet include Form, Multipart, Binary, Cookie Jar
+behavior, redirect controls, proxy/TLS configuration, downloads, or paging for
+large responses. See the [implementation status](./docs/IMPLEMENTATION_STATUS.md)
+for the next increment.
 
-## 快速开始
+## Tech Stack
 
-请先安装：
+- Desktop: Tauri 2
+- Frontend: Vue 3, TypeScript, Vite, Pinia, Vue Router
+- Backend: Rust, Tokio, Reqwest
+- Storage: SQLite via Rusqlite
+- Editing and viewing: CodeMirror 6
+- Testing: Vitest and Cargo test
 
-- Node.js 22 或更新的 LTS 版本
-- Rust stable（项目使用 Rust 2024 edition，至少需要 Rust 1.85）
-- 当前操作系统对应的
-  [Tauri 2 系统依赖](https://v2.tauri.app/start/prerequisites/)
+## Getting Started
+
+Install the following prerequisites:
+
+- Node.js 22 or a newer LTS release
+- Stable Rust (the Rust 2024 edition requires Rust 1.85 or later)
+- The platform-specific
+  [Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/)
+
+Then install dependencies and start the desktop app:
 
 ```bash
 npm install
 npm run desktop:dev
 ```
 
-仅调试 Web UI 时可运行：
+To work on the web UI only:
 
 ```bash
 npm run dev
 ```
 
-Web 模式不提供 SQLite、原生 HTTP 和其他 Tauri command。
+Web-only mode does not provide SQLite, native HTTP, or other Tauri commands.
 
-## 常用命令
+## Common Commands
 
 ```bash
-npm run typecheck       # 检查所有 TypeScript workspace
-npm test                # 运行前端测试
-npm run build           # 构建 Web 前端
-cargo test --workspace  # 运行 Rust 测试
+npm run typecheck       # Type-check every TypeScript workspace
+npm test                # Run frontend tests
+npm run build           # Build the web frontend
+cargo test --workspace  # Run Rust tests
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all -- --check
-npm run desktop:build   # 构建桌面安装包
+npm run desktop:build   # Build desktop bundles
 ```
 
-更完整的开发流程、目录说明和验证清单见
-[DEVELOPMENT.md](./DEVELOPMENT.md)。架构决策见
-[ARCHITECTURE.md](./ARCHITECTURE.md)，IPC 契约见
-[docs/contracts/ipc-v1.md](./docs/contracts/ipc-v1.md)。
+See [DEVELOPMENT.md](./DEVELOPMENT.md) for the repository layout, development
+workflow, and complete verification checklist. Architecture decisions live in
+[ARCHITECTURE.md](./ARCHITECTURE.md), and the IPC contract is documented in
+[docs/contracts/ipc-v1.md](./docs/contracts/ipc-v1.md).
 
-## 项目状态
+## Project Status
 
-Phase 1–3 的开发目标已落地；下一增量是完整 HTTP 能力。各阶段的实际完成项
-以 [docs/IMPLEMENTATION_STATUS.md](./docs/IMPLEMENTATION_STATUS.md) 为准。
+The Phase 1–3 goals are implemented. The next increment focuses on completing
+the HTTP feature set. Refer to
+[docs/IMPLEMENTATION_STATUS.md](./docs/IMPLEMENTATION_STATUS.md) for the exact
+delivery status.
 
 ## License
 
