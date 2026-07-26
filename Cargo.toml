@@ -1,0 +1,32 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/crono-core",
+  "crates/crono-database",
+  "crates/crono-http",
+  "crates/crono-models",
+  "crates-tauri/crono-app",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", default-features = false, features = ["wry"] }
+thiserror = "2"
+ts-rs = "11"
+rusqlite = { version = "0.37", features = ["bundled"] }
+futures-util = "0.3"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+tokio = { version = "1", features = ["fs", "io-util", "macros", "rt-multi-thread", "sync", "time"] }
+tokio-util = "0.7"
+uuid = { version = "1", features = ["v4", "serde"] }
+
+crono-core = { path = "crates/crono-core" }
+crono-database = { path = "crates/crono-database" }
+crono-http = { path = "crates/crono-http" }
+crono-models = { path = "crates/crono-models" }

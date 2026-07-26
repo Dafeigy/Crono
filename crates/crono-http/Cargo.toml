@@ -1,0 +1,18 @@
+[package]
+name = "crono-http"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+crono-models.workspace = true
+futures-util.workspace = true
+reqwest.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+crono-database.workspace = true

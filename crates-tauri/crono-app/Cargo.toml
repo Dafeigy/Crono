@@ -1,0 +1,25 @@
+[package]
+name = "crono-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "crono_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+crono-core.workspace = true
+crono-database.workspace = true
+crono-http.workspace = true
+crono-models.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tauri.workspace = true
+tauri-plugin-dialog = "2"
+tokio-util.workspace = true
+uuid.workspace = true
