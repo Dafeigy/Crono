@@ -34,6 +34,7 @@ import TemplateVariableInput, {
 } from "../../../components/request/TemplateVariableInput.vue";
 import { useHttpStore } from "../../../stores/http";
 import { useModelsStore } from "../../../stores/models";
+import { shortcutLabel } from "../../../shortcuts";
 import { useUiStore } from "../../../stores/ui";
 
 const ResponseCodeViewer = defineAsyncComponent(
@@ -334,6 +335,15 @@ function onDocumentKeydown(event: KeyboardEvent) {
   responseMenuOpen.value = false;
 }
 
+function focusRequestUrl() {
+  document.querySelector<HTMLInputElement>("#request-url")?.focus();
+}
+
+function sendActiveRequest() {
+  if (http.isBusy) return;
+  void sendRequest();
+}
+
 function setResponseMode(mode: "formatted" | "raw") {
   responseMode.value = mode;
   responseTab.value = "response";
@@ -461,6 +471,8 @@ function formatBytes(value: number) {
 onMounted(() => {
   document.addEventListener("pointerdown", onDocumentPointerDown);
   document.addEventListener("keydown", onDocumentKeydown);
+  window.addEventListener("crono:focus-request-url", focusRequestUrl);
+  window.addEventListener("crono:send-request", sendActiveRequest);
 });
 onBeforeUnmount(() => {
   clearTimeout(persistTimer);
@@ -468,6 +480,8 @@ onBeforeUnmount(() => {
   stopSplitResize();
   document.removeEventListener("pointerdown", onDocumentPointerDown);
   document.removeEventListener("keydown", onDocumentKeydown);
+  window.removeEventListener("crono:focus-request-url", focusRequestUrl);
+  window.removeEventListener("crono:send-request", sendActiveRequest);
 });
 </script>
 
@@ -519,6 +533,7 @@ onBeforeUnmount(() => {
             class="url-input"
             :variables="templateVariables"
             :placeholder="t('request.queryPlaceholder')"
+            :title="`${t('request.url')} (${shortcutLabel('focusRequestUrl')})`"
             @submit="sendRequest"
           />
           <Button
@@ -529,7 +544,11 @@ onBeforeUnmount(() => {
             type="button"
             :disabled="!http.isBusy && !models.persistenceAvailable"
             :aria-label="t(http.isBusy ? 'request.cancel' : 'request.send')"
-            :title="t(http.isBusy ? 'request.cancel' : 'request.send')"
+            :title="
+              http.isBusy
+                ? t('request.cancel')
+                : `${t('request.send')} (${shortcutLabel('sendRequest')})`
+            "
             @click="http.isBusy ? http.cancel() : sendRequest()"
           >
             <Square v-if="http.isBusy" :size="13" />

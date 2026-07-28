@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Boxes, Clock3, FlaskConical, Settings2 } from "lucide-vue-next";
 import { useI18n } from "vue-i18n";
+import { useRoute } from "vue-router";
 
 const { t } = useI18n();
+const route = useRoute();
 
 const items = [
   { to: "/", icon: Boxes, label: "app.collections" },
@@ -27,7 +29,11 @@ const items = [
       </RouterLink>
     </div>
     <RouterLink
-      to="/settings"
+      :to="
+        route.name === 'settings'
+          ? route.fullPath
+          : { path: '/settings', query: { from: route.fullPath } }
+      "
       class="rail-link"
       exact-active-class="rail-link-active"
       :aria-label="t('app.settings')"

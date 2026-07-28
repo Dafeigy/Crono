@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { FileJson2, Folder, Search, X } from "lucide-vue-next";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { useModelsStore } from "../../stores/models";
@@ -10,6 +10,7 @@ const { t } = useI18n();
 const router = useRouter();
 const models = useModelsStore();
 const query = ref("");
+const searchInput = ref<HTMLInputElement>();
 
 const results = computed(() => {
   const value = query.value.trim().toLocaleLowerCase();
@@ -60,7 +61,10 @@ function onKeydown(event: KeyboardEvent) {
   }
 }
 
-onMounted(() => document.addEventListener("keydown", onKeydown));
+onMounted(() => {
+  document.addEventListener("keydown", onKeydown);
+  void nextTick(() => searchInput.value?.focus());
+});
 onUnmounted(() => document.removeEventListener("keydown", onKeydown));
 </script>
 
@@ -75,8 +79,8 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
       <div class="command-search-field" role="search">
         <Search :size="16" aria-hidden="true" />
         <input
+          ref="searchInput"
           v-model="query"
-          autofocus
           :aria-label="t('app.search')"
           :placeholder="t('command.placeholder')"
           autocomplete="off"

@@ -3,6 +3,7 @@ export default {
     name: "Crono",
     search: "Search or run a command",
     settings: "Settings",
+    settingsMenu: "Settings and help",
     collections: "Collections",
     environments: "Environments",
     history: "History",
@@ -169,6 +170,7 @@ export default {
   settings: {
     title: "Settings",
     description: "Personalize Crono for the way you work.",
+    back: "Go back",
     appearance: "Appearance",
     appearanceDescription: "Follow your system or lock Crono to one appearance.",
     system: "System",
@@ -178,6 +180,13 @@ export default {
     darkTheme: "Dark theme",
     language: "Language",
     languageDescription: "Change the interface language immediately.",
+    shortcuts: "Keyboard shortcuts",
+    shortcutsDescription:
+      "Review the default key bindings for frequently used actions in Crono.",
+    defaultShortcuts: "14 built-in shortcuts",
+    defaultShortcutsDescription:
+      "These shortcuts are available by default and do not require configuration.",
+    viewShortcuts: "View shortcuts",
     themePreview: "Theme preview",
     themePreviewDescription:
       "Components, status colors, and editors share the same semantic tokens.",
@@ -195,6 +204,36 @@ export default {
     placeholder: "Search requests or run a command…",
     noResults: "No matching commands",
     navigation: "Navigation",
+  },
+  shortcuts: {
+    title: "Keyboard shortcuts",
+    description: "Move through Crono and send requests without leaving the keyboard.",
+    categories: {
+      request: "Request",
+      navigation: "Navigation",
+      application: "Application",
+    },
+    actions: {
+      focusRequestUrl: "Focus request URL",
+      toggleSidebar: "Toggle sidebar",
+      focusSidebar: "Focus sidebar",
+      nextRequestVim: "Switch to next request (Vim)",
+      previousRequestVim: "Switch to previous request (Vim)",
+      newRequest: "Create a new request",
+      switchRequest: "Open request switcher",
+      commandPalette: "Search or run a command",
+      sendRequest: "Send current request",
+      renameRequest: "Rename current request",
+      nextRequest: "Switch to next request",
+      previousRequest: "Switch to previous request",
+      searchRequests: "Search requests in sidebar",
+      openSettings: "Toggle settings",
+    },
+  },
+  about: {
+    title: "About Crono",
+    description: "A focused, local-first API client for building and testing requests.",
+    version: "Version {version}",
   },
   layout: {
     toggle: "Toggle editor layout",

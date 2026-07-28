@@ -14,8 +14,8 @@
       {
         "label": "main",
         "title": "Crono",
-        "width": 1360,
-        "height": 860,
+        "width": 1280,
+        "height": 640,
         "minWidth": 900,
         "minHeight": 620,
         "center": true,

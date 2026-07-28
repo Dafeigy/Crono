@@ -25,6 +25,7 @@ import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { useHttpStore } from "../../stores/http";
 import { useModelsStore } from "../../stores/models";
+import { shortcutLabel } from "../../shortcuts";
 import { useUiStore } from "../../stores/ui";
 
 type ContextTarget =
@@ -52,6 +53,8 @@ const dropFolderId = ref<string>();
 const suppressRequestClickId = ref<string>();
 const contextPosition = ref({ x: 0, y: 0 });
 const contextMenuElement = ref<HTMLElement>();
+const searchInput = ref<HTMLInputElement>();
+const sidebarRoot = ref<HTMLElement>();
 let dragging = false;
 let pendingRequestDrag:
   | { pointerId: number; requestId: string; startX: number; startY: number }
@@ -171,11 +174,11 @@ async function startRename(value: FolderModel | HttpRequest) {
   editingName.value = value.name;
   editingValue.value = value;
   await nextTick();
-  document
-    .querySelector<HTMLInputElement>(
-      `[data-model-id="${value.id}"] input`,
-    )
-    ?.select();
+  const input = document.querySelector<HTMLInputElement>(
+    `[data-model-id="${value.id}"] input`,
+  );
+  input?.focus();
+  input?.select();
 }
 
 async function saveRename(value: FolderModel | HttpRequest) {
@@ -463,10 +466,68 @@ function onRenameModel(event: Event) {
   if (value) void startRename(value);
 }
 
+function focusSidebarSearch() {
+  searchInput.value?.focus();
+  searchInput.value?.select();
+}
+
+function navigableTreeRows() {
+  return [
+    ...(sidebarRoot.value?.querySelectorAll<HTMLElement>(
+      ".collection-tree .tree-row",
+    ) ?? []),
+  ].filter((row) => window.getComputedStyle(row).display !== "none");
+}
+
+async function focusSidebarTree() {
+  await nextTick();
+  const rows = navigableTreeRows();
+  const activeRow =
+    rows.find((row) => row.classList.contains("is-active")) ?? rows[0];
+  activeRow?.focus();
+}
+
+function onSidebarNavigation(event: KeyboardEvent) {
+  const target = event.target;
+  if (
+    !(target instanceof HTMLElement) ||
+    !sidebarRoot.value?.contains(target) ||
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement
+  ) {
+    return;
+  }
+
+  const key = event.key.toLocaleLowerCase();
+  const vimKey =
+    !event.ctrlKey &&
+    !event.altKey &&
+    !event.metaKey &&
+    !event.shiftKey &&
+    (key === "j" || key === "k");
+  const moveDown = event.key === "ArrowDown" || (vimKey && key === "j");
+  const moveUp = event.key === "ArrowUp" || (vimKey && key === "k");
+  if (!moveDown && !moveUp) return;
+
+  const rows = navigableTreeRows();
+  const currentRow = target.closest<HTMLElement>(".tree-row");
+  const currentIndex = currentRow ? rows.indexOf(currentRow) : -1;
+  if (!rows.length) return;
+  event.preventDefault();
+  const nextIndex =
+    currentIndex < 0
+      ? 0
+      : (currentIndex + (moveDown ? 1 : -1) + rows.length) % rows.length;
+  rows[nextIndex]?.focus();
+}
+
 onMounted(() => {
   document.addEventListener("pointerdown", onDocumentPointerDown);
   window.addEventListener("blur", closeContextMenu);
   window.addEventListener("crono:rename-model", onRenameModel);
+  window.addEventListener("crono:focus-sidebar-search", focusSidebarSearch);
+  window.addEventListener("crono:focus-sidebar-tree", focusSidebarTree);
+  document.addEventListener("keydown", onSidebarNavigation);
 });
 onBeforeUnmount(() => {
   if (editingId.value && editingValue.value) {
@@ -477,11 +538,15 @@ onBeforeUnmount(() => {
   document.removeEventListener("pointerdown", onDocumentPointerDown);
   window.removeEventListener("blur", closeContextMenu);
   window.removeEventListener("crono:rename-model", onRenameModel);
+  window.removeEventListener("crono:focus-sidebar-search", focusSidebarSearch);
+  window.removeEventListener("crono:focus-sidebar-tree", focusSidebarTree);
+  document.removeEventListener("keydown", onSidebarNavigation);
 });
 </script>
 
 <template>
   <aside
+    ref="sidebarRoot"
     class="collection-sidebar"
     :class="{ 'is-request-dragging': draggedRequestId }"
   >
@@ -501,7 +566,7 @@ onBeforeUnmount(() => {
           class="subtle-icon-button"
           type="button"
           :aria-label="t('workspace.newRequest')"
-          :title="t('workspace.newRequest')"
+          :title="`${t('workspace.newRequest')} (${shortcutLabel('newRequest')})`"
           @click="createRequest()"
         >
           <Plus :size="16" />
@@ -512,7 +577,12 @@ onBeforeUnmount(() => {
     <label class="sidebar-search">
       <Search :size="14" aria-hidden="true" />
       <span class="sr-only">{{ t("workspace.filter") }}</span>
-      <input v-model="filter" :placeholder="t('workspace.filter')" />
+      <input
+        ref="searchInput"
+        v-model="filter"
+        :placeholder="t('workspace.filter')"
+        :title="`${t('workspace.filter')} (${shortcutLabel('searchRequests')})`"
+      />
       <button
         v-if="filter"
         type="button"

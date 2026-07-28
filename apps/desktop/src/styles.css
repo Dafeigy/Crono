@@ -139,14 +139,26 @@ select {
 button:focus-visible,
 a:focus-visible,
 select:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: -2px;
+  outline: none;
 }
 
 input:focus-visible,
 textarea:focus-visible {
   outline: var(--focus-border-width) solid var(--ring);
   outline-offset: calc(-1 * var(--focus-border-width));
+}
+
+:where(button, a, select, [tabindex]:not(input):not(textarea)):focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+:where(
+    .resize-handle,
+    .workspace-split-handle,
+    .environment-resize-handle
+  ):focus-visible:not(:hover)::after {
+  background: transparent !important;
 }
 
 .sr-only {
@@ -726,6 +738,28 @@ kbd {
   min-height: 0;
   overflow: hidden;
   background: var(--background);
+}
+
+.route-page-enter-active {
+  transition:
+    opacity 240ms ease-out,
+    transform 240ms ease-out;
+}
+
+.route-page-leave-active {
+  transition:
+    opacity 160ms ease-in,
+    transform 160ms ease-in;
+}
+
+.route-page-enter-from {
+  opacity: 0;
+  transform: translateY(5px);
+}
+
+.route-page-leave-to {
+  opacity: 0;
+  transform: translateY(-3px);
 }
 
 .request-workspace {
@@ -1720,8 +1754,24 @@ kbd {
   display: flex;
   max-width: 940px;
   align-items: flex-start;
-  justify-content: space-between;
+  gap: 10px;
   margin: 0 auto 28px;
+}
+
+.settings-back-button {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+  margin-left: -4px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-foreground);
+}
+
+.settings-back-button:hover {
+  background: var(--muted);
+  color: var(--foreground);
 }
 
 .settings-header h1 {
@@ -1856,6 +1906,35 @@ kbd {
   gap: 8px;
 }
 
+.shortcuts-card {
+  grid-column: 1 / -1;
+}
+
+.shortcut-empty-state {
+  display: flex;
+  min-height: 68px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 16px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--background) 72%, var(--card));
+}
+
+.shortcut-empty-state h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.shortcut-empty-state p {
+  margin: 5px 0 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .theme-preview-card {
   grid-column: 1 / -1;
 }
@@ -1960,6 +2039,10 @@ kbd {
     grid-column: auto;
   }
 
+  .shortcuts-card {
+    grid-column: auto;
+  }
+
 }
 
 @media (max-width: 760px) {
@@ -1977,6 +2060,11 @@ kbd {
 
   .titlebar {
     grid-template-columns: auto 34px minmax(160px, 1fr) auto;
+  }
+
+  .shortcut-empty-state {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 
@@ -2022,6 +2110,235 @@ kbd {
 
 .url-input-shell {
   overflow: visible;
+}
+
+/* Settings/help menu and keyboard shortcut reference */
+.settings-menu-root {
+  position: relative;
+  display: grid;
+  height: 100%;
+  place-items: center;
+}
+
+.titlebar-actions > .settings-menu-root > button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted-foreground);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.titlebar-actions > .settings-menu-root > button:hover,
+.titlebar-actions > .settings-menu-root > button[aria-expanded="true"] {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.titlebar-actions > .settings-menu-root > button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.settings-menu {
+  position: absolute;
+  z-index: 80;
+  top: 34px;
+  right: 0;
+  display: grid;
+  width: 220px;
+  gap: 2px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 18px 50px
+    color-mix(in oklch, var(--crono-shadow) 24%, transparent);
+}
+
+.settings-menu > button,
+.settings-menu > a {
+  display: grid;
+  width: 100%;
+  min-height: 34px;
+  cursor: pointer;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: 11px;
+  text-align: start;
+  text-decoration: none;
+}
+
+.settings-menu > button:hover,
+.settings-menu > button:focus-visible,
+.settings-menu > a:hover,
+.settings-menu > a:focus-visible {
+  outline: 0;
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.settings-menu kbd {
+  padding: 1px 4px;
+  font-size: 9px;
+}
+
+.app-dialog.shortcuts-dialog {
+  width: min(640px, 100%);
+  height: auto;
+  max-height: min(720px, 86vh);
+  overflow: auto;
+  background: var(--popover);
+}
+
+.shortcuts-dialog-header {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--popover);
+}
+
+.shortcuts-dialog-icon,
+.about-dialog-mark {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.shortcuts-dialog-header h2,
+.about-dialog h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.shortcuts-dialog-header p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.shortcuts-dialog-header .dialog-close-button {
+  position: static;
+}
+
+.shortcuts-dialog-content {
+  display: grid;
+  gap: 20px;
+  padding: 18px 20px 22px;
+}
+
+.shortcut-group h3 {
+  margin: 0 0 7px;
+  color: var(--crono-text-subtle);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.shortcut-list {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.shortcut-row {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 7px 11px;
+  font-size: 12px;
+}
+
+.shortcut-row + .shortcut-row {
+  border-top: 1px solid var(--border);
+}
+
+.shortcut-keys {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.shortcut-keys kbd {
+  min-width: 24px;
+  justify-content: center;
+  padding: 3px 6px;
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: 0 1px 0 var(--border);
+}
+
+.app-dialog.about-dialog {
+  display: flex;
+  width: min(420px, 100%);
+  height: auto;
+  align-items: center;
+  flex-direction: column;
+  padding: 28px 38px 30px;
+  background: var(--popover);
+  text-align: center;
+}
+
+.about-dialog-mark {
+  margin-bottom: 14px;
+}
+
+.about-dialog p {
+  max-width: 330px;
+  margin: 8px 0 18px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.about-dialog > span {
+  color: var(--crono-text-subtle);
+  font-size: 10px;
+}
+
+@media (max-width: 560px) {
+  .shortcuts-dialog-header {
+    padding-inline: 14px;
+  }
+
+  .shortcuts-dialog-content {
+    padding-inline: 14px;
+  }
+
+  .shortcut-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
 }
 
 .url-input-shell > .template-variable-input {

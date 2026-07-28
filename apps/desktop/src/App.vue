@@ -26,7 +26,11 @@ onBeforeUnmount(() => {
         :aria-hidden="!ui.sidebarOpen"
       />
       <main class="app-content">
-        <RouterView />
+        <RouterView v-slot="{ Component, route }">
+          <Transition name="route-page" mode="out-in">
+            <component :is="Component" :key="String(route.name)" />
+          </Transition>
+        </RouterView>
       </main>
     </div>
   </div>

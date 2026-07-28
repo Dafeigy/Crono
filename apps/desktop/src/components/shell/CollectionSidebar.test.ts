@@ -154,4 +154,65 @@ describe("CollectionSidebar", () => {
     expect(document.querySelector(".collection-context-menu")).toBeNull();
     wrapper.unmount();
   });
+
+  it("focuses and navigates the tree with Vim shortcuts", async () => {
+    const wrapper = mountSidebar();
+    window.dispatchEvent(new CustomEvent("crono:focus-sidebar-tree"));
+    await nextTick();
+
+    const rows = wrapper.findAll<HTMLElement>(".collection-tree .tree-row");
+    const activeIndex = rows.findIndex((row) =>
+      row.classes().includes("is-active"),
+    );
+    expect(activeIndex).toBeGreaterThanOrEqual(0);
+    expect(document.activeElement).toBe(rows[activeIndex]!.element);
+
+    const nextEvent = new KeyboardEvent("keydown", {
+      key: "j",
+      bubbles: true,
+      cancelable: true,
+    });
+    rows[activeIndex]!.element.dispatchEvent(nextEvent);
+    await nextTick();
+    const nextIndex = (activeIndex + 1) % rows.length;
+    expect(nextEvent.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(rows[nextIndex]!.element);
+
+    const previousEvent = new KeyboardEvent("keydown", {
+      key: "k",
+      bubbles: true,
+      cancelable: true,
+    });
+    rows[nextIndex]!.element.dispatchEvent(previousEvent);
+    await nextTick();
+    expect(previousEvent.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(rows[activeIndex]!.element);
+    wrapper.unmount();
+  });
+
+  it("renames the current request and confirms with Enter", async () => {
+    const models = useModelsStore();
+    const request = models.currentRequest!;
+    const wrapper = mountSidebar();
+
+    window.dispatchEvent(
+      new CustomEvent("crono:rename-model", {
+        detail: { id: request.id },
+      }),
+    );
+    await nextTick();
+
+    const input = wrapper.get<HTMLInputElement>(
+      `.tree-request-wrap[data-model-id="${request.id}"] input`,
+    );
+    expect(document.activeElement).toBe(input.element);
+    await input.setValue("Renamed request");
+    await input.trigger("keydown", { key: "Enter" });
+    await flushPromises();
+
+    expect(models.httpRequests.find(({ id }) => id === request.id)?.name).toBe(
+      "Renamed request",
+    );
+    wrapper.unmount();
+  });
 });

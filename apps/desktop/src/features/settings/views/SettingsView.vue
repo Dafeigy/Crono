@@ -1,21 +1,45 @@
 <script setup lang="ts">
 import { Button } from "@crono/ui";
 import {
+  ArrowLeft,
   Check,
+  Keyboard,
   Moon,
   Palette,
   Sun,
 } from "lucide-vue-next";
 import { useI18n } from "vue-i18n";
+import { useRoute, useRouter } from "vue-router";
+import { settingsReturnPath } from "../../../settingsNavigation";
 import { usePreferencesStore } from "../../../stores/preferences";
 
 const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
 const preferences = usePreferencesStore();
+
+function goBack() {
+  void router.push(settingsReturnPath(route.query.from));
+}
+
+function openShortcuts() {
+  window.dispatchEvent(new CustomEvent("crono:open-shortcuts"));
+}
 </script>
 
 <template>
   <section class="settings-page">
     <header class="settings-header">
+      <Button
+        class="settings-back-button"
+        variant="ghost"
+        size="icon"
+        :aria-label="t('settings.back')"
+        :title="t('settings.back')"
+        @click="goBack"
+      >
+        <ArrowLeft :size="16" aria-hidden="true" />
+      </Button>
       <div>
         <h1>{{ t("settings.title") }}</h1>
         <p>{{ t("settings.description") }}</p>
@@ -118,6 +142,30 @@ const preferences = usePreferencesStore();
             @click="preferences.setLocale('en-US')"
           >
             English
+          </Button>
+        </div>
+      </article>
+
+      <article class="settings-card shortcuts-card">
+        <div class="settings-card-heading">
+          <Keyboard :size="19" />
+          <div>
+            <h2>{{ t("settings.shortcuts") }}</h2>
+            <p>{{ t("settings.shortcutsDescription") }}</p>
+          </div>
+        </div>
+        <div class="shortcut-empty-state">
+          <div>
+            <h3>{{ t("settings.defaultShortcuts") }}</h3>
+            <p>{{ t("settings.defaultShortcutsDescription") }}</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            @click="openShortcuts"
+          >
+            <Keyboard :size="14" aria-hidden="true" />
+            {{ t("settings.viewShortcuts") }}
           </Button>
         </div>
       </article>

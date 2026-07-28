@@ -98,6 +98,25 @@ describe("TemplateVariableInput", () => {
     ]);
   });
 
+  it("releases input focus when Escape is pressed", async () => {
+    const wrapper = mount(TemplateVariableInput, {
+      props: {
+        modelValue: "https://api.example.com",
+        variables: [],
+      },
+      global: { plugins: [i18n] },
+      attachTo: document.body,
+    });
+
+    const input = wrapper.get("input");
+    input.element.focus();
+    expect(input.element).toBe(document.activeElement);
+
+    await input.trigger("keydown", { key: "Escape" });
+    expect(input.element).not.toBe(document.activeElement);
+    wrapper.unmount();
+  });
+
   it("removes a tag with its visible remove control", async () => {
     const wrapper = mount(TemplateVariableInput, {
       props: {

@@ -9,6 +9,8 @@ import {
   Cookie,
   FileJson2,
   FolderPlus,
+  Info,
+  Keyboard,
   Minus,
   PanelLeftClose,
   PanelLeftOpen,
@@ -29,10 +31,19 @@ import {
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { useModelsStore } from "../../stores/models";
+import { orderRequestsForNavigation } from "../../requestNavigation";
+import { settingsReturnPath } from "../../settingsNavigation";
+import {
+  isCommandPaletteShortcut,
+  requestSwitchOffset,
+  shortcutLabel,
+} from "../../shortcuts";
 import { useUiStore } from "../../stores/ui";
+import AboutDialog from "./AboutDialog.vue";
 import CommandDialog from "./CommandDialog.vue";
 import CreateWorkspaceDialog from "./CreateWorkspaceDialog.vue";
 import EnvironmentDialog from "./EnvironmentDialog.vue";
+import ShortcutsDialog from "./ShortcutsDialog.vue";
 import WorkspaceSettingsDialog from "./WorkspaceSettingsDialog.vue";
 
 const { t } = useI18n();
@@ -44,13 +55,17 @@ const workspaceRoot = ref<HTMLElement>();
 const createMenuRoot = ref<HTMLElement>();
 const requestMenuRoot = ref<HTMLElement>();
 const requestMenuButton = ref<HTMLButtonElement>();
+const settingsMenuRoot = ref<HTMLElement>();
 const createMenuOpen = ref(false);
 const workspaceMenuOpen = ref(false);
 const requestMenuOpen = ref(false);
+const settingsMenuOpen = ref(false);
 const createWorkspaceDialogOpen = ref(false);
 const workspaceSettingsDialogOpen = ref(false);
 const environmentDialogOpen = ref(false);
 const commandDialogOpen = ref(false);
+const shortcutsDialogOpen = ref(false);
+const aboutDialogOpen = ref(false);
 const isTauri = "__TAURI_INTERNALS__" in window;
 
 const selectedRequest = computed(
@@ -62,6 +77,14 @@ const workspaceRequests = computed(() =>
   models.httpRequests
     .filter(({ workspaceId }) => workspaceId === models.activeWorkspaceId)
     .sort((left, right) => left.sortPriority - right.sortPriority),
+);
+const orderedWorkspaceRequests = computed(() =>
+  orderRequestsForNavigation(
+    workspaceRequests.value,
+    models.folders.filter(
+      ({ workspaceId }) => workspaceId === models.activeWorkspaceId,
+    ),
+  ),
 );
 const currentTitle = computed(() =>
   route.name === "settings"
@@ -107,10 +130,100 @@ async function selectRequest(id: string) {
 async function toggleRequestMenu() {
   requestMenuOpen.value = !requestMenuOpen.value;
   if (!requestMenuOpen.value) return;
+  createMenuOpen.value = false;
+  settingsMenuOpen.value = false;
   await nextTick();
   requestMenuRoot.value
     ?.querySelector<HTMLElement>('[role="menuitemradio"][aria-checked="true"]')
     ?.focus();
+}
+
+async function openRequestMenu() {
+  if (!orderedWorkspaceRequests.value.length) return;
+  if (route.name !== "workspace") {
+    await router.push({
+      path: "/",
+      query: selectedRequest.value ? { request: selectedRequest.value.id } : {},
+    });
+  }
+  requestMenuOpen.value = true;
+  createMenuOpen.value = false;
+  settingsMenuOpen.value = false;
+  await nextTick();
+  requestMenuRoot.value
+    ?.querySelector<HTMLElement>('[role="menuitemradio"][aria-checked="true"]')
+    ?.focus();
+}
+
+async function openCreateMenu() {
+  createMenuOpen.value = true;
+  requestMenuOpen.value = false;
+  settingsMenuOpen.value = false;
+  await nextTick();
+  createMenuRoot.value?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+}
+
+function toggleCreateMenu() {
+  if (createMenuOpen.value) {
+    createMenuOpen.value = false;
+    return;
+  }
+  void openCreateMenu();
+}
+
+function toggleSettingsMenu() {
+  settingsMenuOpen.value = !settingsMenuOpen.value;
+  if (settingsMenuOpen.value) {
+    createMenuOpen.value = false;
+    requestMenuOpen.value = false;
+  }
+}
+
+function openShortcutsDialog() {
+  settingsMenuOpen.value = false;
+  shortcutsDialogOpen.value = true;
+}
+
+function onMenuKeydown(event: KeyboardEvent) {
+  const key = event.key.toLocaleLowerCase();
+  const vimDown = !event.ctrlKey && !event.metaKey && !event.altKey && key === "j";
+  const vimUp = !event.ctrlKey && !event.metaKey && !event.altKey && key === "k";
+  if (
+    !["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) &&
+    !vimDown &&
+    !vimUp
+  ) {
+    return;
+  }
+  const menu = event.currentTarget as HTMLElement;
+  const items = [...menu.querySelectorAll<HTMLElement>('[role^="menuitem"]')];
+  if (!items.length) return;
+  event.preventDefault();
+  const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+  let nextIndex = currentIndex;
+  if (event.key === "Home") nextIndex = 0;
+  else if (event.key === "End") nextIndex = items.length - 1;
+  else if (event.key === "ArrowDown" || vimDown) {
+    nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+  } else {
+    nextIndex =
+      currentIndex < 0 ? items.length - 1 : (currentIndex - 1 + items.length) % items.length;
+  }
+  items[nextIndex]?.focus();
+}
+
+async function switchRequestByOffset(offset: number) {
+  const requests = orderedWorkspaceRequests.value;
+  if (!requests.length) return;
+  const currentIndex = requests.findIndex(
+    ({ id }) => id === selectedRequest.value?.id,
+  );
+  const nextIndex =
+    currentIndex < 0
+      ? 0
+      : (currentIndex + offset + requests.length) % requests.length;
+  const request = requests[nextIndex];
+  if (request) await selectRequest(request.id);
 }
 
 function onRequestMenuFocusOut() {
@@ -209,16 +322,79 @@ function onDocumentPointerDown(event: PointerEvent) {
   ) {
     requestMenuOpen.value = false;
   }
+  if (
+    settingsMenuOpen.value &&
+    !settingsMenuRoot.value?.contains(event.target as Node)
+  ) {
+    settingsMenuOpen.value = false;
+  }
 }
 
 function onDocumentKeydown(event: KeyboardEvent) {
-  if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === "k") {
+  const key = event.key.toLocaleLowerCase();
+  const switchOffset = requestSwitchOffset(event);
+  if (event.ctrlKey && !event.altKey && key === "l") {
+    event.preventDefault();
+    window.dispatchEvent(new CustomEvent("crono:focus-request-url"));
+  } else if (event.ctrlKey && !event.altKey && key === "b") {
+    event.preventDefault();
+    void toggleSidebar();
+  } else if (event.ctrlKey && !event.altKey && key === "h") {
+    event.preventDefault();
+    ui.setSidebarOpen(true);
+    void nextTick(() =>
+      window.dispatchEvent(new CustomEvent("crono:focus-sidebar-tree")),
+    );
+  } else if (event.ctrlKey && !event.altKey && key === "m") {
+    event.preventDefault();
+    const requestId = selectedRequest.value?.id;
+    if (requestId) {
+      ui.setSidebarOpen(true);
+      void nextTick(() =>
+        window.dispatchEvent(
+          new CustomEvent("crono:rename-model", {
+            detail: { id: requestId },
+          }),
+        ),
+      );
+    }
+  } else if (event.ctrlKey && !event.altKey && key === "n") {
+    event.preventDefault();
+    void openCreateMenu();
+  } else if (event.ctrlKey && !event.altKey && key === "p") {
+    event.preventDefault();
+    void openRequestMenu();
+  } else if (switchOffset !== undefined) {
+    event.preventDefault();
+    void switchRequestByOffset(switchOffset);
+  } else if (isCommandPaletteShortcut(event)) {
     event.preventDefault();
     commandDialogOpen.value = true;
+  } else if (event.ctrlKey && !event.altKey && event.key === "Enter") {
+    event.preventDefault();
+    window.dispatchEvent(new CustomEvent("crono:send-request"));
+  } else if (event.ctrlKey && !event.altKey && key === "f") {
+    event.preventDefault();
+    ui.setSidebarOpen(true);
+    void nextTick(() =>
+      window.dispatchEvent(new CustomEvent("crono:focus-sidebar-search")),
+    );
+  } else if (event.ctrlKey && !event.altKey && event.key === ",") {
+    event.preventDefault();
+    settingsMenuOpen.value = false;
+    if (route.name === "settings") {
+      void router.push(settingsReturnPath(route.query.from));
+    } else {
+      void router.push({
+        path: "/settings",
+        query: { from: route.fullPath },
+      });
+    }
   }
   if (event.key === "Escape") {
     createMenuOpen.value = false;
     workspaceMenuOpen.value = false;
+    settingsMenuOpen.value = false;
     if (requestMenuOpen.value) {
       requestMenuOpen.value = false;
       requestMenuButton.value?.focus();
@@ -246,10 +422,12 @@ function onTitlebarDoubleClick(event: MouseEvent) {
 onMounted(() => {
   document.addEventListener("pointerdown", onDocumentPointerDown);
   document.addEventListener("keydown", onDocumentKeydown);
+  window.addEventListener("crono:open-shortcuts", openShortcutsDialog);
 });
 onUnmounted(() => {
   document.removeEventListener("pointerdown", onDocumentPointerDown);
   document.removeEventListener("keydown", onDocumentKeydown);
+  window.removeEventListener("crono:open-shortcuts", openShortcutsDialog);
 });
 </script>
 
@@ -266,9 +444,9 @@ onUnmounted(() => {
           :aria-label="
             t(ui.sidebarOpen ? 'workspace.collapseSidebar' : 'workspace.expandSidebar')
           "
-          :title="
-            t(ui.sidebarOpen ? 'workspace.collapseSidebar' : 'workspace.expandSidebar')
-          "
+          :title="`${t(
+            ui.sidebarOpen ? 'workspace.collapseSidebar' : 'workspace.expandSidebar',
+          )} (${shortcutLabel('toggleSidebar')})`"
           @click="toggleSidebar"
         >
           <PanelLeftClose v-if="ui.sidebarOpen" :size="13" />
@@ -278,14 +456,19 @@ onUnmounted(() => {
           <button
             type="button"
             :aria-label="t('common.create')"
-            :title="t('common.create')"
+            :title="`${t('common.create')} (${shortcutLabel('newRequest')})`"
             aria-haspopup="menu"
             :aria-expanded="createMenuOpen"
-            @click="createMenuOpen = !createMenuOpen"
+            @click="toggleCreateMenu"
           >
             <Plus :size="13" />
           </button>
-          <div v-if="createMenuOpen" class="titlebar-create-menu" role="menu">
+          <div
+            v-if="createMenuOpen"
+            class="titlebar-create-menu"
+            role="menu"
+            @keydown="onMenuKeydown"
+          >
             <button type="button" role="menuitem" @click="createRequest">
               <FileJson2 :size="14" />
               <span>{{ t("workspace.newRequest") }}</span>
@@ -380,18 +563,28 @@ onUnmounted(() => {
         aria-haspopup="menu"
         :aria-expanded="requestMenuOpen"
         :aria-label="t('request.selectRequest')"
+        :title="`${t('request.selectRequest')} (${shortcutLabel(
+          'switchRequest',
+        )}) · ${t('shortcuts.actions.renameRequest')} (${shortcutLabel(
+          'renameRequest',
+        )})`"
         @click="toggleRequestMenu"
       >
         <span>{{ currentTitle }}</span>
         <ChevronDown :size="12" aria-hidden="true" />
       </button>
-      <div v-if="requestMenuOpen" class="request-switcher-menu" role="menu">
+      <div
+        v-if="requestMenuOpen"
+        class="request-switcher-menu"
+        role="menu"
+        @keydown="onMenuKeydown"
+      >
         <div class="request-switcher-heading">
           {{ t("request.selectRequest") }}
         </div>
         <div class="request-switcher-items">
           <button
-            v-for="request in workspaceRequests"
+            v-for="request in orderedWorkspaceRequests"
             :key="request.id"
             type="button"
             role="menuitemradio"
@@ -432,19 +625,62 @@ onUnmounted(() => {
       <button
         type="button"
         :aria-label="t('app.search')"
-        :title="`${t('app.search')} (Ctrl+K)`"
+        :title="`${t('app.search')} (${shortcutLabel('commandPalette')})`"
         @click="commandDialogOpen = true"
       >
         <Search :size="14" />
       </button>
-      <RouterLink
-        class="icon-link"
-        to="/settings"
-        :aria-label="t('app.settings')"
-        :title="t('app.settings')"
-      >
-        <Settings2 :size="14" />
-      </RouterLink>
+      <div ref="settingsMenuRoot" class="settings-menu-root">
+        <button
+          type="button"
+          aria-haspopup="menu"
+          :aria-expanded="settingsMenuOpen"
+          :aria-label="t('app.settingsMenu')"
+          :title="t('app.settingsMenu')"
+          @click="toggleSettingsMenu"
+        >
+          <Settings2 :size="14" />
+        </button>
+        <div
+          v-if="settingsMenuOpen"
+          class="settings-menu"
+          role="menu"
+          @keydown="onMenuKeydown"
+        >
+          <RouterLink
+            role="menuitem"
+            :to="
+              route.name === 'settings'
+                ? route.fullPath
+                : { path: '/settings', query: { from: route.fullPath } }
+            "
+            @click="settingsMenuOpen = false"
+          >
+            <Settings2 :size="14" aria-hidden="true" />
+            <span>{{ t("app.settings") }}</span>
+            <kbd>{{ shortcutLabel("openSettings") }}</kbd>
+          </RouterLink>
+          <button
+            type="button"
+            role="menuitem"
+            @click="openShortcutsDialog"
+          >
+            <Keyboard :size="14" aria-hidden="true" />
+            <span>{{ t("shortcuts.title") }}</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            @click="
+              settingsMenuOpen = false;
+              aboutDialogOpen = true;
+            "
+          >
+            <Info :size="14" aria-hidden="true" />
+            <span>{{ t("about.title") }}</span>
+          </button>
+        </div>
+      </div>
       <div v-if="isTauri" class="window-controls">
         <button
           type="button"
@@ -479,6 +715,14 @@ onUnmounted(() => {
       <CommandDialog
         v-if="commandDialogOpen"
         @close="commandDialogOpen = false"
+      />
+      <ShortcutsDialog
+        v-if="shortcutsDialogOpen"
+        @close="shortcutsDialogOpen = false"
+      />
+      <AboutDialog
+        v-if="aboutDialogOpen"
+        @close="aboutDialogOpen = false"
       />
       <CreateWorkspaceDialog
         v-if="createWorkspaceDialogOpen"

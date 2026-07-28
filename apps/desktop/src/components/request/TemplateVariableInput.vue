@@ -93,6 +93,12 @@ function selectVariable(variable: TemplateVariableOption) {
 }
 
 function onKeydown(event: KeyboardEvent) {
+  if (event.key === "Escape") {
+    event.preventDefault();
+    focused.value = false;
+    inputElement.value?.blur();
+    return;
+  }
   if (showSuggestions.value) {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
@@ -106,11 +112,6 @@ function onKeydown(event: KeyboardEvent) {
       event.preventDefault();
       const variable = filteredVariables.value[activeIndex.value];
       if (variable) selectVariable(variable);
-      return;
-    }
-    if (event.key === "Escape") {
-      event.preventDefault();
-      focused.value = false;
       return;
     }
   }
