@@ -8,6 +8,7 @@ import {
 import { EditorView, lineNumbers } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { codeMirrorCspNonceExtension } from "./codeMirrorCsp";
 
 const props = withDefaults(
   defineProps<{
@@ -96,6 +97,7 @@ onMounted(() => {
           "aria-label": "Response body",
           tabindex: "0",
         }),
+        codeMirrorCspNonceExtension(),
         syntaxHighlighting(cronoHighlightStyle),
         cronoTheme,
         language.of(languageExtension()),
