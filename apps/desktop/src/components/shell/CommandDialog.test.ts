@@ -112,6 +112,10 @@ describe("CommandDialog", () => {
     await nextTick();
     const input = wrapper.get<HTMLInputElement>("input");
     expect(document.activeElement).toBe(input.element);
+    const secondCommand = wrapper.findAll<HTMLButtonElement>(
+      ".command-results > button",
+    )[1]!;
+    secondCommand.element.scrollIntoView = () => secondCommand.element.focus();
 
     const down = new KeyboardEvent("keydown", {
       key: "j",
@@ -123,9 +127,7 @@ describe("CommandDialog", () => {
     await nextTick();
 
     expect(down.defaultPrevented).toBe(true);
-    expect(
-      wrapper.findAll(".command-results > button")[1]?.classes(),
-    ).toContain("is-selected");
+    expect(secondCommand.classes()).toContain("is-selected");
     expect(document.activeElement).toBe(input.element);
 
     const up = new KeyboardEvent("keydown", {

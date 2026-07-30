@@ -282,17 +282,21 @@ function onKeydown(event: KeyboardEvent) {
   ) {
     if (!results.value.length) return;
     event.preventDefault();
+    event.stopPropagation();
     const offset = event.key === "ArrowDown" || vimDown ? 1 : -1;
     selectedIndex.value =
       (selectedIndex.value + offset + results.value.length) %
       results.value.length;
-    void nextTick(() =>
+    searchInput.value?.focus({ preventScroll: true });
+    void nextTick(() => {
       document
         .querySelector<HTMLElement>(
           `[data-command-index="${selectedIndex.value}"]`,
         )
-        ?.scrollIntoView?.({ block: "nearest" }),
-    );
+        ?.scrollIntoView?.({ block: "nearest" });
+      // Some WebViews transfer focus while scrolling a newly selected button.
+      searchInput.value?.focus({ preventScroll: true });
+    });
   } else if (event.key === "Enter") {
     const command = results.value[selectedIndex.value];
     if (!command) return;
@@ -310,10 +314,10 @@ watch(results, () => {
 });
 
 onMounted(() => {
-  document.addEventListener("keydown", onKeydown);
+  document.addEventListener("keydown", onKeydown, true);
   void nextTick(() => searchInput.value?.focus());
 });
-onUnmounted(() => document.removeEventListener("keydown", onKeydown));
+onUnmounted(() => document.removeEventListener("keydown", onKeydown, true));
 </script>
 
 <template>
