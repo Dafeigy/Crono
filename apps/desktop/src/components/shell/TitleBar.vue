@@ -719,6 +719,8 @@ onUnmounted(() => {
       <CommandDialog
         v-if="commandDialogOpen"
         @close="commandDialogOpen = false"
+        @create-workspace="createWorkspaceDialogOpen = true"
+        @open-environments="environmentDialogOpen = true"
       />
       <ShortcutsDialog
         v-if="shortcutsDialogOpen"
