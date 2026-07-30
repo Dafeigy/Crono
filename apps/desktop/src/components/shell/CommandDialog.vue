@@ -261,10 +261,28 @@ function onKeydown(event: KeyboardEvent) {
     return;
   }
   if (pendingDelete.value) return;
-  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+  const key = event.key.toLocaleLowerCase();
+  const vimDown =
+    event.ctrlKey &&
+    !event.metaKey &&
+    !event.altKey &&
+    !event.shiftKey &&
+    key === "j";
+  const vimUp =
+    event.ctrlKey &&
+    !event.metaKey &&
+    !event.altKey &&
+    !event.shiftKey &&
+    key === "k";
+  if (
+    event.key === "ArrowDown" ||
+    event.key === "ArrowUp" ||
+    vimDown ||
+    vimUp
+  ) {
     if (!results.value.length) return;
     event.preventDefault();
-    const offset = event.key === "ArrowDown" ? 1 : -1;
+    const offset = event.key === "ArrowDown" || vimDown ? 1 : -1;
     selectedIndex.value =
       (selectedIndex.value + offset + results.value.length) %
       results.value.length;
@@ -273,7 +291,7 @@ function onKeydown(event: KeyboardEvent) {
         .querySelector<HTMLElement>(
           `[data-command-index="${selectedIndex.value}"]`,
         )
-        ?.scrollIntoView({ block: "nearest" }),
+        ?.scrollIntoView?.({ block: "nearest" }),
     );
   } else if (event.key === "Enter") {
     const command = results.value[selectedIndex.value];
@@ -350,6 +368,8 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
             v-model="query"
             :aria-label="t('app.search')"
             :placeholder="t('command.placeholder')"
+            aria-controls="command-results"
+            :aria-activedescendant="`command-result-${selectedIndex}`"
             autocomplete="off"
             spellcheck="false"
           />
@@ -362,7 +382,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
           </button>
         </div>
         <p v-if="error" class="command-error" role="alert">{{ error }}</p>
-        <div class="command-results">
+        <div id="command-results" class="command-results">
           <template
             v-for="(command, index) in results"
             :key="command.id"
@@ -374,6 +394,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
               {{ groupLabel(command.group) }}
             </h2>
             <button
+              :id="`command-result-${index}`"
               type="button"
               :class="{
                 'is-selected': selectedIndex === index,

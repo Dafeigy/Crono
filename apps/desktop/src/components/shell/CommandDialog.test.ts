@@ -9,6 +9,7 @@ import {
   createRouter,
   type Router,
 } from "vue-router";
+import { nextTick } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enUS from "../../i18n/locales/en-US";
 import { useModelsStore } from "../../stores/models";
@@ -103,6 +104,49 @@ describe("CommandDialog", () => {
     await wrapper.get("input").setValue("team");
     expect(wrapper.text()).toContain("Team APIs");
     expect(wrapper.text()).not.toContain("Create user");
+    wrapper.unmount();
+  });
+
+  it("navigates with Ctrl+J/K while keeping the search input focused", async () => {
+    const wrapper = mountDialog();
+    await nextTick();
+    const input = wrapper.get<HTMLInputElement>("input");
+    expect(document.activeElement).toBe(input.element);
+
+    const down = new KeyboardEvent("keydown", {
+      key: "j",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    input.element.dispatchEvent(down);
+    await nextTick();
+
+    expect(down.defaultPrevented).toBe(true);
+    expect(
+      wrapper.findAll(".command-results > button")[1]?.classes(),
+    ).toContain("is-selected");
+    expect(document.activeElement).toBe(input.element);
+
+    const up = new KeyboardEvent("keydown", {
+      key: "k",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    input.element.dispatchEvent(up);
+    await nextTick();
+
+    expect(up.defaultPrevented).toBe(true);
+    expect(
+      wrapper.findAll(".command-results > button")[0]?.classes(),
+    ).toContain("is-selected");
+    expect(document.activeElement).toBe(input.element);
+
+    await input.setValue("team");
+    expect(wrapper.text()).toContain("Team APIs");
+    expect(wrapper.text()).not.toContain("Create user");
+    expect(document.activeElement).toBe(input.element);
     wrapper.unmount();
   });
 
