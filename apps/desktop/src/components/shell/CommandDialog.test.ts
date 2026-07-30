@@ -13,6 +13,7 @@ import { nextTick } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enUS from "../../i18n/locales/en-US";
 import { useModelsStore } from "../../stores/models";
+import { useUiStore } from "../../stores/ui";
 import CommandDialog from "./CommandDialog.vue";
 
 const i18n = createI18n({
@@ -182,6 +183,10 @@ describe("CommandDialog", () => {
     expect(writeText).toHaveBeenCalledWith(
       expect.stringContaining("--url 'https://example.com'"),
     );
+    expect(useUiStore().toast).toMatchObject({
+      kind: "success",
+      message: "cURL copied to clipboard.",
+    });
 
     await commandButton(wrapper, "Delete request").trigger("click");
     expect(wrapper.text()).toContain("Delete request?");
@@ -191,6 +196,26 @@ describe("CommandDialog", () => {
     expect(
       models.httpRequests.some(({ id }) => id === "request-one"),
     ).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("shows an error toast when copying cURL fails", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: vi.fn().mockRejectedValue(new Error("Clipboard denied")),
+      },
+    });
+    const wrapper = mountDialog();
+
+    await commandButton(wrapper, "Copy as cURL").trigger("click");
+    await flushPromises();
+
+    expect(useUiStore().toast).toMatchObject({
+      kind: "error",
+      message: "Could not copy cURL.",
+    });
+    expect(wrapper.text()).toContain("The action could not be completed.");
     wrapper.unmount();
   });
 });

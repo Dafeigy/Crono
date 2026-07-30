@@ -2,6 +2,13 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 
 export type SplitLayout = "horizontal" | "vertical";
+export type ToastKind = "success" | "error";
+
+export interface Toast {
+  id: number;
+  kind: ToastKind;
+  message: string;
+}
 
 const STORAGE_KEY = "crono:split-layout";
 const SIDEBAR_STORAGE_KEY = "crono:sidebar-open";
@@ -32,6 +39,9 @@ export const useUiStore = defineStore("ui", () => {
   const environmentListWidth = ref(
     storedNumber(ENVIRONMENT_LIST_WIDTH_STORAGE_KEY, 240, 190, 380),
   );
+  const toast = ref<Toast>();
+  let toastId = 0;
+  let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
   function toggleSplitLayout() {
     splitLayout.value =
@@ -70,16 +80,35 @@ export const useUiStore = defineStore("ui", () => {
     );
   }
 
+  function dismissToast() {
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = undefined;
+    toast.value = undefined;
+  }
+
+  function showToast(message: string, kind: ToastKind = "success") {
+    if (toastTimer) clearTimeout(toastTimer);
+    toast.value = {
+      id: ++toastId,
+      kind,
+      message,
+    };
+    toastTimer = setTimeout(dismissToast, 3_500);
+  }
+
   return {
     splitLayout,
     sidebarOpen,
     horizontalSplit,
     verticalSplit,
     environmentListWidth,
+    toast,
     toggleSplitLayout,
     toggleSidebar,
     setSidebarOpen,
     setRequestSplit,
     setEnvironmentListWidth,
+    showToast,
+    dismissToast,
   };
 });

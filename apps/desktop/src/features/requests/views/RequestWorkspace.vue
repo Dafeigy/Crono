@@ -2,6 +2,7 @@
 import type {
   Environment,
   HttpRequest,
+  HttpResponse,
   KeyValue,
   RequestAuth,
   RequestBody,
@@ -19,6 +20,7 @@ import {
   Plus,
   Send,
   Square,
+  Trash2,
   X,
 } from "lucide-vue-next";
 import {
@@ -53,8 +55,8 @@ void http.initialize();
 const draft = ref<HttpRequest>();
 const requestTab = ref("params");
 const responseTab = ref("response");
-const primaryRequestTabs = ["params", "headers", "body"] as const;
-const responseTabs = ["request", "headers", "history", "timeline"] as const;
+const primaryRequestTabs = ["headers", "params"] as const;
+const responseTabs = ["request", "headers", "timeline"] as const;
 const requestMethods = [
   "GET",
   "POST",
@@ -66,13 +68,44 @@ const requestMethods = [
 ] as const;
 const methodMenuOpen = ref(false);
 const methodMenuRoot = ref<HTMLElement>();
+const bodyTypeMenuOpen = ref(false);
+const bodyTypeMenuRoot = ref<HTMLElement>();
 const authMenuOpen = ref(false);
 const authMenuRoot = ref<HTMLElement>();
 const responseMenuOpen = ref(false);
 const responseMenuRoot = ref<HTMLElement>();
+const historyMenuOpen = ref(false);
+const historyMenuRoot = ref<HTMLElement>();
 const responseMode = ref<"formatted" | "raw">("formatted");
 const actionFeedback = ref("");
 const workspaceElement = ref<HTMLElement>();
+
+function bodyTypeName(type: RequestBody["type"]) {
+  if (type === "json") return "JSON";
+  if (type === "form") return t("request.bodyUrlEncoded");
+  return t(type === "none" ? "request.bodyNone" : "request.bodyText");
+}
+
+const bodyTypeGroups = computed(() => [
+  {
+    id: "form",
+    label: t("request.bodyFormData"),
+    items: [{ type: "form" as const, label: bodyTypeName("form") }],
+  },
+  {
+    id: "text",
+    label: t("request.bodyTextContent"),
+    items: [
+      { type: "json" as const, label: bodyTypeName("json") },
+      { type: "text" as const, label: bodyTypeName("text") },
+    ],
+  },
+  {
+    id: "other",
+    label: t("request.bodyOther"),
+    items: [{ type: "none" as const, label: bodyTypeName("none") }],
+  },
+]);
 const templateVariables = computed<TemplateVariableOption[]>(() => {
   const activeEnvironment = models.currentEnvironment;
   const variables = new Map<string, TemplateVariableOption>();
@@ -131,6 +164,28 @@ const displayedBody = computed(() =>
 const responseLanguage = computed<"json" | "text">(() =>
   http.activeResponse?.contentType?.includes("json") ? "json" : "text",
 );
+const historyGroups = computed(() => {
+  const groups = new Map<string, HttpResponse[]>();
+  const now = Date.now();
+  for (const response of http.history) {
+    const ageMinutes = Math.max(
+      0,
+      Math.floor((now - response.createdAt * 1000) / 60_000),
+    );
+    const label =
+      ageMinutes < 1
+        ? t("response.justNow")
+        : ageMinutes < 60
+          ? t("response.minutesAgo", { count: ageMinutes })
+          : ageMinutes < 24 * 60
+            ? t("response.hoursAgo", { count: Math.floor(ageMinutes / 60) })
+            : t("response.daysAgo", { count: Math.floor(ageMinutes / (24 * 60)) });
+    const entries = groups.get(label) ?? [];
+    entries.push(response);
+    groups.set(label, entries);
+  }
+  return [...groups].map(([label, items]) => ({ label, items }));
+});
 const requestHeaders = computed(() => {
   if (!draft.value) return [];
   const entries = draft.value.headers
@@ -198,7 +253,7 @@ const authLabel = computed(() => {
     case "inherit":
       return t("request.authInherit");
     default:
-      return t("request.authNone");
+      return t("request.auth");
   }
 });
 let loadingRequest = false;
@@ -279,14 +334,33 @@ function removeKeyValue(target: "parameters" | "headers", id: string) {
   draft.value[target] = draft.value[target].filter((item) => item.id !== id);
 }
 
+function addBodyFormField() {
+  if (draft.value?.body.type === "form") {
+    draft.value.body.value.push(blankKeyValue());
+  }
+}
+
+function removeBodyFormField(id: string) {
+  if (draft.value?.body.type === "form") {
+    draft.value.body.value = draft.value.body.value.filter(
+      (item) => item.id !== id,
+    );
+  }
+}
+
 function setBodyType(type: RequestBody["type"]) {
   if (!draft.value) return;
+  bodyTypeMenuOpen.value = false;
+  requestTab.value = "body";
+  if (draft.value.body.type === type) return;
   draft.value.body =
     type === "json"
       ? { type, value: "{}" }
       : type === "text"
         ? { type, value: "" }
-        : { type: "none" };
+        : type === "form"
+          ? { type, value: [blankKeyValue()] }
+          : { type: "none" };
 }
 
 function setAuthType(type: RequestAuth["type"]) {
@@ -317,6 +391,12 @@ function onDocumentPointerDown(event: PointerEvent) {
     methodMenuOpen.value = false;
   }
   if (
+    bodyTypeMenuOpen.value &&
+    !bodyTypeMenuRoot.value?.contains(event.target as Node)
+  ) {
+    bodyTypeMenuOpen.value = false;
+  }
+  if (
     authMenuOpen.value &&
     !authMenuRoot.value?.contains(event.target as Node)
   ) {
@@ -328,13 +408,21 @@ function onDocumentPointerDown(event: PointerEvent) {
   ) {
     responseMenuOpen.value = false;
   }
+  if (
+    historyMenuOpen.value &&
+    !historyMenuRoot.value?.contains(event.target as Node)
+  ) {
+    historyMenuOpen.value = false;
+  }
 }
 
 function onDocumentKeydown(event: KeyboardEvent) {
   if (event.key !== "Escape") return;
   methodMenuOpen.value = false;
+  bodyTypeMenuOpen.value = false;
   authMenuOpen.value = false;
   responseMenuOpen.value = false;
+  historyMenuOpen.value = false;
 }
 
 function focusRequestUrl() {
@@ -421,6 +509,45 @@ async function exportResponseBody() {
   } catch {
     responseMenuOpen.value = false;
     showActionFeedback(t("response.exportFailed"));
+  }
+}
+
+function historyStatusLabel(response: HttpResponse) {
+  if (response.status != null) return String(response.status);
+  if (response.state === "failed") return t("response.errorShort");
+  return t(`response.states.${response.state}`);
+}
+
+function formatHistoryDateTime(timestamp: number) {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "medium",
+  }).format(timestamp * 1000);
+}
+
+async function selectHistoryResponse(response: HttpResponse) {
+  await http.loadResponse(response);
+  responseTab.value = "response";
+  historyMenuOpen.value = false;
+}
+
+async function deleteActiveResponse() {
+  if (!http.activeResponse) return;
+  try {
+    await http.deleteResponse(http.activeResponse.id);
+    showActionFeedback(t("response.historyDeleted"));
+  } catch {
+    showActionFeedback(t("response.historyDeleteFailed"));
+  }
+}
+
+async function clearResponseHistory() {
+  if (!http.history.length) return;
+  try {
+    await http.clearHistory();
+    showActionFeedback(t("response.historyCleared"));
+  } catch {
+    showActionFeedback(t("response.historyDeleteFailed"));
   }
 }
 
@@ -586,6 +713,52 @@ onBeforeUnmount(() => {
             {{ draft.headers.filter(({ enabled }) => enabled).length }}
           </Badge>
         </button>
+        <div ref="bodyTypeMenuRoot" class="body-tab-root">
+          <button
+            type="button"
+            role="tab"
+            aria-haspopup="menu"
+            :aria-selected="requestTab === 'body'"
+            :aria-expanded="bodyTypeMenuOpen"
+            :class="{ 'is-active': requestTab === 'body' }"
+            @click="
+              requestTab = 'body';
+              bodyTypeMenuOpen = !bodyTypeMenuOpen;
+            "
+          >
+            {{ t("request.body") }}
+            <ChevronDown :size="12" aria-hidden="true" />
+          </button>
+          <div v-if="bodyTypeMenuOpen" class="body-tab-menu" role="menu">
+            <div
+              v-for="group in bodyTypeGroups"
+              :key="group.id"
+              class="body-tab-menu-group"
+              role="group"
+              :aria-labelledby="`body-type-group-${group.id}`"
+            >
+              <span :id="`body-type-group-${group.id}`">
+                {{ group.label }}
+              </span>
+              <button
+                v-for="item in group.items"
+                :key="item.type"
+                type="button"
+                role="menuitemradio"
+                :aria-checked="draft.body.type === item.type"
+                :class="{ 'is-active': draft.body.type === item.type }"
+                @click="setBodyType(item.type)"
+              >
+                <Check
+                  :class="{ 'is-hidden': draft.body.type !== item.type }"
+                  :size="13"
+                  aria-hidden="true"
+                />
+                <span>{{ item.label }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
         <div ref="authMenuRoot" class="auth-tab-root">
           <button
             type="button"
@@ -694,23 +867,60 @@ onBeforeUnmount(() => {
         </div>
 
         <div v-else-if="requestTab === 'body'" class="body-editor">
-          <label>
-            <span>{{ t("request.bodyType") }}</span>
-            <select
-              :value="draft.body.type"
-              @change="
-                setBodyType(
-                  ($event.target as HTMLSelectElement).value as RequestBody['type'],
-                )
-              "
+          <div
+            v-if="draft.body.type === 'form'"
+            class="key-value-editor body-form-editor"
+          >
+            <div class="kv-header">
+              <span />
+              <span>{{ t("request.key") }}</span>
+              <span>{{ t("request.value") }}</span>
+              <span>{{ t("request.description") }}</span>
+              <span />
+            </div>
+            <div
+              v-for="item in draft.body.value"
+              :key="item.id"
+              class="kv-row"
             >
-              <option value="none">{{ t("request.bodyNone") }}</option>
-              <option value="text">{{ t("request.bodyText") }}</option>
-              <option value="json">JSON</option>
-            </select>
-          </label>
+              <input
+                v-model="item.enabled"
+                type="checkbox"
+                :aria-label="t('request.enabled')"
+              />
+              <TemplateVariableInput
+                v-model="item.name"
+                :variables="templateVariables"
+                :placeholder="t('request.key')"
+              />
+              <TemplateVariableInput
+                v-model="item.value"
+                :variables="templateVariables"
+                :placeholder="t('request.value')"
+              />
+              <input disabled :placeholder="t('request.optional')" />
+              <Button
+                type="button"
+                class="request-config-remove-button"
+                variant="ghost"
+                size="icon"
+                :aria-label="t('request.removeField')"
+                @click="removeBodyFormField(item.id)"
+              >
+                <X :size="13" />
+              </Button>
+            </div>
+            <button
+              class="add-field-button"
+              type="button"
+              @click="addBodyFormField"
+            >
+              <Plus :size="13" />
+              {{ t("request.addField") }}
+            </button>
+          </div>
           <textarea
-            v-if="draft.body.type === 'text' || draft.body.type === 'json'"
+            v-else-if="draft.body.type === 'text' || draft.body.type === 'json'"
             v-model="draft.body.value"
             spellcheck="false"
           />
@@ -860,9 +1070,90 @@ onBeforeUnmount(() => {
         <span v-else class="response-state">
           {{ http.state ? t(`response.states.${http.state}`) : t("response.noResponse") }}
         </span>
-        <span v-if="actionFeedback" class="response-action-feedback" role="status">
-          <Check :size="12" />{{ actionFeedback }}
-        </span>
+        <div class="response-summary-actions">
+          <span v-if="actionFeedback" class="response-action-feedback" role="status">
+            <Check :size="12" />{{ actionFeedback }}
+          </span>
+          <div ref="historyMenuRoot" class="response-history-root">
+            <button
+              class="response-history-trigger"
+              type="button"
+              aria-haspopup="menu"
+              :aria-expanded="historyMenuOpen"
+              :aria-label="t('response.history')"
+              :title="t('response.history')"
+              @click="historyMenuOpen = !historyMenuOpen"
+            >
+              <Clock3 :size="15" aria-hidden="true" />
+            </button>
+            <div v-if="historyMenuOpen" class="response-history-menu" role="menu">
+              <div class="response-history-actions">
+                <button
+                  type="button"
+                  role="menuitem"
+                  :disabled="
+                    !http.activeResponse || http.isBusy || http.isMutatingHistory
+                  "
+                  @click="deleteActiveResponse"
+                >
+                  <Trash2 :size="14" aria-hidden="true" />
+                  <span>{{ t("response.deleteCurrent") }}</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  :disabled="
+                    !http.history.length || http.isBusy || http.isMutatingHistory
+                  "
+                  @click="clearResponseHistory"
+                >
+                  <Trash2 :size="14" aria-hidden="true" />
+                  <span>{{ t("response.deleteAll") }}</span>
+                </button>
+              </div>
+              <div class="response-history-section">
+                <span class="response-history-heading">
+                  {{ t("response.recent") }}
+                </span>
+                <p v-if="!http.history.length" class="response-history-empty">
+                  {{ t("response.noRecentRequests") }}
+                </p>
+                <template v-else>
+                  <div
+                    v-for="group in historyGroups"
+                    :key="group.label"
+                    class="response-history-group"
+                  >
+                    <span>{{ group.label }}</span>
+                    <button
+                      v-for="item in group.items"
+                      :key="item.id"
+                      type="button"
+                      role="menuitem"
+                      :class="{
+                        'is-active': item.id === http.activeResponse?.id,
+                        'is-error': item.status == null || item.status >= 400,
+                      }"
+                      :title="formatHistoryDateTime(item.createdAt)"
+                      @click="selectHistoryResponse(item)"
+                    >
+                      <Check
+                        :class="{ 'is-hidden': item.id !== http.activeResponse?.id }"
+                        :size="13"
+                        aria-hidden="true"
+                      />
+                      <strong>{{ historyStatusLabel(item) }}</strong>
+                      <span aria-hidden="true">•</span>
+                      <span>{{ item.elapsedMs != null ? `${item.elapsedMs} ms` : "—" }}</span>
+                      <span aria-hidden="true">•</span>
+                      <span>{{ formatBytes(item.bodySize) }}</span>
+                    </button>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="response-navigation">
@@ -925,13 +1216,9 @@ onBeforeUnmount(() => {
               responseMenuOpen = false;
             "
           >
-            <Clock3 v-if="tab === 'history'" :size="13" />
             {{ t(`response.${tab}`) }}
             <Badge v-if="tab === 'headers'" tone="neutral">
               {{ displayedRequestHeaders.length + (http.activeResponse?.headers.length ?? 0) }}
-            </Badge>
-            <Badge v-if="tab === 'history' && http.history.length" tone="neutral">
-              {{ http.history.length }}
             </Badge>
           </button>
         </div>
@@ -1017,23 +1304,6 @@ onBeforeUnmount(() => {
           </div>
           <p v-else>{{ t("response.noHeaders") }}</p>
         </section>
-      </div>
-
-      <div v-else-if="responseTab === 'history'" class="history-list">
-        <button
-          v-for="item in http.history"
-          :key="item.id"
-          type="button"
-          :class="{ 'is-active': item.id === http.activeResponse?.id }"
-          @click="http.loadResponse(item)"
-        >
-          <span class="method-label" :class="`method-${item.method.toLowerCase()}`">
-            {{ item.method }}
-          </span>
-          <strong>{{ item.status ?? t(`response.states.${item.state}`) }}</strong>
-          <span>{{ formatBytes(item.bodySize) }}</span>
-          <time>{{ new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "medium" }).format(item.createdAt * 1000) }}</time>
-        </button>
       </div>
 
       <div v-else-if="responseTab === 'timeline'" class="timeline-list">

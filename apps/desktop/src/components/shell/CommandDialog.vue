@@ -28,6 +28,7 @@ import {
 } from "../../curl";
 import { orderRequestsForNavigation } from "../../requestNavigation";
 import { useModelsStore } from "../../stores/models";
+import { useUiStore } from "../../stores/ui";
 
 type CommandGroup = "actions" | "requests" | "folders" | "workspaces";
 
@@ -51,6 +52,7 @@ const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const models = useModelsStore();
+const ui = useUiStore();
 const query = ref("");
 const searchInput = ref<HTMLInputElement>();
 const selectedIndex = ref(0);
@@ -126,13 +128,19 @@ const commands = computed<CommandResult[]>(() => {
         group: "actions",
         icon: Copy,
         run: async () => {
-          const variables = environmentVariableMap(
-            models.environments,
-            models.activeEnvironmentId,
-          );
-          await navigator.clipboard.writeText(
-            requestToCurl(request, variables),
-          );
+          try {
+            const variables = environmentVariableMap(
+              models.environments,
+              models.activeEnvironmentId,
+            );
+            await navigator.clipboard.writeText(
+              requestToCurl(request, variables),
+            );
+            ui.showToast(t("command.copyAsCurlSuccess"), "success");
+          } catch (cause) {
+            ui.showToast(t("command.copyAsCurlFailed"), "error");
+            throw cause;
+          }
         },
       },
       {

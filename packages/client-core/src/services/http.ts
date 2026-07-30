@@ -42,6 +42,14 @@ export const httpService = {
     return invokeCommand("http_response_history", { requestId, limit });
   },
 
+  deleteResponse(responseId: string): Promise<boolean> {
+    return invokeCommand("http_response_delete", { responseId });
+  },
+
+  clearHistory(requestId: string): Promise<number> {
+    return invokeCommand("http_response_history_clear", { requestId });
+  },
+
   latest(workspaceId: string): Promise<HttpResponse[]> {
     return invokeCommand("http_response_latest", { workspaceId });
   },

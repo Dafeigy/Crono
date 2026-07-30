@@ -384,6 +384,40 @@ fn http_response_history(
 }
 
 #[tauri::command(rename_all = "camelCase")]
+fn http_response_delete(
+    database: State<'_, Database>,
+    response_id: String,
+) -> Result<bool, AppError> {
+    let response = database
+        .delete_http_response(&response_id)
+        .map_err(AppError::from)?;
+    if let Some(path) = response
+        .as_ref()
+        .and_then(|response| response.body_path.as_ref())
+    {
+        let _ = std::fs::remove_file(path);
+    }
+    Ok(response.is_some())
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn http_response_history_clear(
+    database: State<'_, Database>,
+    request_id: String,
+) -> Result<usize, AppError> {
+    let responses = database
+        .clear_response_history(&request_id)
+        .map_err(AppError::from)?;
+    for path in responses
+        .iter()
+        .filter_map(|response| response.body_path.as_ref())
+    {
+        let _ = std::fs::remove_file(path);
+    }
+    Ok(responses.len())
+}
+
+#[tauri::command(rename_all = "camelCase")]
 fn http_response_latest(
     database: State<'_, Database>,
     workspace_id: String,
@@ -494,6 +528,8 @@ pub fn run() {
             http_response_body_read,
             http_response_body_export,
             http_response_history,
+            http_response_delete,
+            http_response_history_clear,
             http_response_latest,
             http_response_events,
         ])

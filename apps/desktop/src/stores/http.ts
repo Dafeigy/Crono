@@ -26,6 +26,7 @@ export const useHttpStore = defineStore("http", () => {
   const timeline = ref<TimelineEvent[]>([]);
   const error = ref<AppError>();
   const initialized = ref(false);
+  const isMutatingHistory = ref(false);
   let disposeProgress: (() => void) | undefined;
   let disposeState: (() => void) | undefined;
   let historyLoadSequence = 0;
@@ -146,6 +147,53 @@ export const useHttpStore = defineStore("http", () => {
     await loadResponse(latest);
   }
 
+  function clearActiveResponse() {
+    activeResponse.value = undefined;
+    state.value = undefined;
+    progress.value = undefined;
+    body.value = "";
+    bodyIsText.value = true;
+    timeline.value = [];
+  }
+
+  async function deleteResponse(responseId: string) {
+    const response = history.value.find(({ id }) => id === responseId);
+    if (!response || isBusy.value || isMutatingHistory.value) return;
+    isMutatingHistory.value = true;
+    try {
+      await httpService.deleteResponse(responseId);
+      history.value = history.value.filter(({ id }) => id !== responseId);
+      const latest = history.value[0];
+      if (latest) {
+        latestResponses.value[response.requestId] = latest;
+      } else {
+        delete latestResponses.value[response.requestId];
+      }
+      if (activeResponse.value?.id !== responseId) return;
+      if (latest) {
+        await loadResponse(latest);
+      } else {
+        clearActiveResponse();
+      }
+    } finally {
+      isMutatingHistory.value = false;
+    }
+  }
+
+  async function clearHistory() {
+    const requestId = activeRequestId.value;
+    if (!requestId || isBusy.value || isMutatingHistory.value) return;
+    isMutatingHistory.value = true;
+    try {
+      await httpService.clearHistory(requestId);
+      history.value = [];
+      delete latestResponses.value[requestId];
+      clearActiveResponse();
+    } finally {
+      isMutatingHistory.value = false;
+    }
+  }
+
   async function loadLatestResponses(workspaceId: string) {
     if (!("__TAURI_INTERNALS__" in window)) return;
     const responses = await httpService.latest(workspaceId);
@@ -175,11 +223,14 @@ export const useHttpStore = defineStore("http", () => {
     timeline,
     error,
     isBusy,
+    isMutatingHistory,
     initialize,
     send,
     cancel,
     loadResponse,
     loadHistory,
+    deleteResponse,
+    clearHistory,
     loadLatestResponses,
     dispose,
   };

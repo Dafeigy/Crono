@@ -98,4 +98,56 @@ describe("http store", () => {
     expect(store.body).toBe("");
     expect(store.history).toEqual([]);
   });
+
+  it("deletes the active response and opens the next newest response", async () => {
+    const latest = response("response-latest", "request-one");
+    const previous = {
+      ...response("response-previous", "request-one"),
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    vi.spyOn(httpService, "history").mockResolvedValue([latest, previous]);
+    vi.spyOn(httpService, "readBody").mockResolvedValue({
+      content: "{}",
+      offset: 0,
+      nextOffset: 2,
+      eof: true,
+      isText: true,
+    });
+    vi.spyOn(httpService, "timeline").mockResolvedValue([]);
+    vi.spyOn(httpService, "deleteResponse").mockResolvedValue(true);
+
+    const store = useHttpStore();
+    await store.loadHistory("request-one");
+    await store.deleteResponse(latest.id);
+
+    expect(httpService.deleteResponse).toHaveBeenCalledWith(latest.id);
+    expect(store.history).toEqual([previous]);
+    expect(store.activeResponse).toEqual(previous);
+    expect(store.latestResponses["request-one"]).toEqual(previous);
+  });
+
+  it("clears all response history for the active request", async () => {
+    const latest = response("response-latest", "request-one");
+    vi.spyOn(httpService, "history").mockResolvedValue([latest]);
+    vi.spyOn(httpService, "readBody").mockResolvedValue({
+      content: "{}",
+      offset: 0,
+      nextOffset: 2,
+      eof: true,
+      isText: true,
+    });
+    vi.spyOn(httpService, "timeline").mockResolvedValue([]);
+    vi.spyOn(httpService, "clearHistory").mockResolvedValue(1);
+
+    const store = useHttpStore();
+    await store.loadHistory("request-one");
+    await store.clearHistory();
+
+    expect(httpService.clearHistory).toHaveBeenCalledWith("request-one");
+    expect(store.history).toEqual([]);
+    expect(store.activeResponse).toBeUndefined();
+    expect(store.body).toBe("");
+    expect(store.latestResponses["request-one"]).toBeUndefined();
+  });
 });

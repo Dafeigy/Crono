@@ -291,6 +291,41 @@ impl Database {
         )
     }
 
+    pub fn delete_http_response(
+        &self,
+        response_id: &str,
+    ) -> Result<Option<HttpResponse>, DatabaseError> {
+        let connection = self.connection()?;
+        let response = connection
+            .query_row(
+                "SELECT payload FROM http_responses WHERE id = ?1",
+                [response_id],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?
+            .map(|payload| serde_json::from_str(&payload))
+            .transpose()?;
+        connection.execute("DELETE FROM http_responses WHERE id = ?1", [response_id])?;
+        Ok(response)
+    }
+
+    pub fn clear_response_history(
+        &self,
+        request_id: &str,
+    ) -> Result<Vec<HttpResponse>, DatabaseError> {
+        let connection = self.connection()?;
+        let responses = load_many(
+            &connection,
+            "SELECT payload FROM http_responses WHERE request_id = ?1",
+            [request_id],
+        )?;
+        connection.execute(
+            "DELETE FROM http_responses WHERE request_id = ?1",
+            [request_id],
+        )?;
+        Ok(responses)
+    }
+
     pub fn latest_responses(&self, workspace_id: &str) -> Result<Vec<HttpResponse>, DatabaseError> {
         let connection = self.connection()?;
         load_many(
@@ -929,6 +964,33 @@ mod tests {
         assert_eq!(latest.len(), 1);
         assert_eq!(latest[0].id, "response-newer");
         assert_eq!(database.timeline("response").unwrap().len(), 1);
+
+        assert_eq!(
+            database
+                .delete_http_response("response-newer")
+                .unwrap()
+                .unwrap()
+                .id,
+            "response-newer"
+        );
+        assert_eq!(
+            database.response_history("request-test", 10).unwrap().len(),
+            1
+        );
+        assert_eq!(
+            database
+                .clear_response_history("request-test")
+                .unwrap()
+                .len(),
+            1
+        );
+        assert!(
+            database
+                .response_history("request-test", 10)
+                .unwrap()
+                .is_empty()
+        );
+        assert!(database.timeline("response").unwrap().is_empty());
     }
 
     #[test]
