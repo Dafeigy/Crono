@@ -4318,6 +4318,54 @@ kbd {
   grid-template-rows: minmax(0, 1fr);
 }
 
+.workspace-empty-state {
+  display: flex;
+  width: min(560px, calc(100% - 48px));
+  align-self: center;
+  justify-self: center;
+  flex-direction: column;
+  align-items: center;
+  color: var(--foreground);
+  text-align: center;
+}
+
+.workspace-empty-mark {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 18px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--muted);
+  color: var(--primary);
+}
+
+.workspace-empty-state h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.workspace-empty-state > p {
+  max-width: 440px;
+  margin: 8px 0 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.workspace-empty-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.workspace-empty-actions button {
+  gap: 7px;
+}
+
 .request-workspace.layout-horizontal {
   grid-template-columns: minmax(390px, 1.15fr) minmax(340px, 0.85fr);
 }

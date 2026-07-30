@@ -50,6 +50,8 @@ export default {
     renameCurrent: "重命名当前工作区",
     collapseSidebar: "收起侧边栏",
     expandSidebar: "展开侧边栏",
+    emptyTitle: "工作区已准备就绪",
+    emptyDescription: "新建请求或文件夹，开始整理你的 API 集合。",
   },
   request: {
     untitled: "未命名请求",

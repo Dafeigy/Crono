@@ -8,7 +8,7 @@ use std::{
 
 use crono_database::Database;
 use crono_http::{ExecuteContext, HttpExecutor};
-use crono_models::{HttpResponse, HttpResponseState, Model, RequestAuth, RequestBody};
+use crono_models::{HttpRequest, HttpResponse, HttpResponseState, Model, RequestAuth, RequestBody};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
@@ -28,10 +28,22 @@ async fn persisted_request_to_history_and_body_is_a_closed_loop() {
     });
 
     let database = Database::open_in_memory().unwrap();
-    let mut request = database.http_request("request-health-check").unwrap();
-    request.url = format!("http://{address}/health");
-    request.body = RequestBody::None;
-    request.authentication = RequestAuth::None;
+    let request = HttpRequest {
+        id: "request-integration".to_owned(),
+        workspace_id: "workspace-personal".to_owned(),
+        folder_id: None,
+        name: "Integration request".to_owned(),
+        method: "GET".to_owned(),
+        url: format!("http://{address}/health"),
+        parameters: Vec::new(),
+        headers: Vec::new(),
+        body: RequestBody::None,
+        authentication: RequestAuth::None,
+        timeout_ms: 30_000,
+        sort_priority: 1000,
+        created_at: 1,
+        updated_at: 1,
+    };
     database
         .upsert(Model::HttpRequest(request.clone()), "integration")
         .unwrap();

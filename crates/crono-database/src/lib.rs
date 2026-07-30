@@ -6,7 +6,7 @@ use std::{
 
 use crono_models::{
     Environment, Folder, HttpRequest, HttpResponse, Model, ModelChange, ModelKind, ModelOperation,
-    RequestAuth, RequestBody, Settings, TimelineEvent, Workspace, WorkspaceSnapshot,
+    Settings, TimelineEvent, Workspace, WorkspaceSnapshot,
 };
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 use serde::{Serialize, de::DeserializeOwned};
@@ -180,54 +180,8 @@ impl Database {
             created_at: now,
             updated_at: now,
         };
-        let folder = Folder {
-            id: "folder-public-apis".to_owned(),
-            workspace_id: workspace.id.clone(),
-            parent_id: None,
-            name: "Public APIs".to_owned(),
-            sort_priority: 1000,
-            created_at: now,
-            updated_at: now,
-        };
-        let request = HttpRequest {
-            id: "request-health-check".to_owned(),
-            workspace_id: workspace.id.clone(),
-            folder_id: Some(folder.id.clone()),
-            name: "Health check".to_owned(),
-            method: "GET".to_owned(),
-            url: "https://api.example.com/v1/health".to_owned(),
-            parameters: Vec::new(),
-            headers: Vec::new(),
-            body: RequestBody::None,
-            authentication: RequestAuth::None,
-            timeout_ms: 30_000,
-            sort_priority: 1000,
-            created_at: now,
-            updated_at: now,
-        };
-
         insert_if_missing(&transaction, "settings", &settings.id, &settings)?;
         insert_if_missing(&transaction, "workspaces", &workspace.id, &workspace)?;
-        transaction.execute(
-            "INSERT OR IGNORE INTO folders(id, workspace_id, parent_id, payload)
-             VALUES (?1, ?2, ?3, ?4)",
-            params![
-                folder.id,
-                folder.workspace_id,
-                folder.parent_id,
-                serde_json::to_string(&folder)?
-            ],
-        )?;
-        transaction.execute(
-            "INSERT OR IGNORE INTO http_requests(id, workspace_id, folder_id, payload)
-             VALUES (?1, ?2, ?3, ?4)",
-            params![
-                request.id,
-                request.workspace_id,
-                request.folder_id,
-                serde_json::to_string(&request)?
-            ],
-        )?;
         transaction.commit()?;
         Ok(())
     }
@@ -726,19 +680,50 @@ fn record_change(
 #[cfg(test)]
 mod tests {
     use crono_models::{
-        Environment, HttpResponse, HttpResponseState, KeyValue, Model, ModelKind, ModelOperation,
-        TimelineEvent,
+        Environment, Folder, HttpRequest, HttpResponse, HttpResponseState, KeyValue, Model,
+        ModelKind, ModelOperation, RequestAuth, RequestBody, TimelineEvent,
     };
 
     use super::Database;
+
+    fn sample_folder() -> Folder {
+        Folder {
+            id: "folder-test".to_owned(),
+            workspace_id: "workspace-personal".to_owned(),
+            parent_id: None,
+            name: "Test folder".to_owned(),
+            sort_priority: 1000,
+            created_at: 1,
+            updated_at: 1,
+        }
+    }
+
+    fn sample_request(folder_id: Option<String>) -> HttpRequest {
+        HttpRequest {
+            id: "request-test".to_owned(),
+            workspace_id: "workspace-personal".to_owned(),
+            folder_id,
+            name: "Test request".to_owned(),
+            method: "GET".to_owned(),
+            url: "https://example.com".to_owned(),
+            parameters: Vec::new(),
+            headers: Vec::new(),
+            body: RequestBody::None,
+            authentication: RequestAuth::None,
+            timeout_ms: 30_000,
+            sort_priority: 1000,
+            created_at: 1,
+            updated_at: 1,
+        }
+    }
 
     #[test]
     fn bootstraps_and_hydrates_first_workspace() {
         let database = Database::open_in_memory().unwrap();
         let snapshot = database.hydrate(Some("workspace-personal")).unwrap();
         assert_eq!(snapshot.workspaces.len(), 1);
-        assert_eq!(snapshot.folders.len(), 1);
-        assert_eq!(snapshot.http_requests.len(), 1);
+        assert!(snapshot.folders.is_empty());
+        assert!(snapshot.http_requests.is_empty());
     }
 
     #[test]
@@ -777,25 +762,38 @@ mod tests {
     #[test]
     fn deletion_is_reported_after_commit() {
         let database = Database::open_in_memory().unwrap();
+        database
+            .upsert(Model::HttpRequest(sample_request(None)), "main")
+            .unwrap();
         let change = database
             .delete(
                 ModelKind::HttpRequest,
-                "request-health-check",
+                "request-test",
                 Some("workspace-personal"),
                 "main",
             )
             .unwrap();
-        assert_eq!(change.model_id, "request-health-check");
+        assert_eq!(change.model_id, "request-test");
         assert!(database.hydrate(None).unwrap().http_requests.is_empty());
     }
 
     #[test]
     fn deleting_a_folder_removes_its_requests() {
         let database = Database::open_in_memory().unwrap();
+        let folder = sample_folder();
+        database
+            .upsert(Model::Folder(folder.clone()), "main")
+            .unwrap();
+        database
+            .upsert(
+                Model::HttpRequest(sample_request(Some(folder.id.clone()))),
+                "main",
+            )
+            .unwrap();
         database
             .delete(
                 ModelKind::Folder,
-                "folder-public-apis",
+                &folder.id,
                 Some("workspace-personal"),
                 "main",
             )
@@ -880,9 +878,12 @@ mod tests {
     #[test]
     fn persists_response_history_and_timeline() {
         let database = Database::open_in_memory().unwrap();
+        database
+            .upsert(Model::HttpRequest(sample_request(None)), "main")
+            .unwrap();
         let response = HttpResponse {
             id: "response".to_owned(),
-            request_id: "request-health-check".to_owned(),
+            request_id: "request-test".to_owned(),
             workspace_id: "workspace-personal".to_owned(),
             task_id: "task".to_owned(),
             state: HttpResponseState::Closed,
@@ -921,10 +922,7 @@ mod tests {
             }])
             .unwrap();
         assert_eq!(
-            database
-                .response_history("request-health-check", 10)
-                .unwrap()[0]
-                .status,
+            database.response_history("request-test", 10).unwrap()[0].status,
             Some(201)
         );
         let latest = database.latest_responses("workspace-personal").unwrap();
@@ -936,20 +934,23 @@ mod tests {
     #[test]
     fn duplicates_request_with_a_new_identity() {
         let database = Database::open_in_memory().unwrap();
+        database
+            .upsert(Model::HttpRequest(sample_request(None)), "main")
+            .unwrap();
         let change = database
             .duplicate(
                 ModelKind::HttpRequest,
-                "request-health-check",
-                "Health check copy",
+                "request-test",
+                "Test request copy",
                 "main",
             )
             .unwrap();
         let Model::HttpRequest(request) = change.model.unwrap() else {
             panic!("expected duplicated request");
         };
-        assert_ne!(request.id, "request-health-check");
+        assert_ne!(request.id, "request-test");
         assert!(request.id.starts_with("rq_"));
-        assert_eq!(request.name, "Health check copy");
+        assert_eq!(request.name, "Test request copy");
         assert_eq!(database.hydrate(None).unwrap().http_requests.len(), 2);
     }
 }

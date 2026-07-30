@@ -31,7 +31,40 @@ beforeEach(async () => {
   });
   await router.push("/");
   await router.isReady();
-  await useModelsStore().initialize();
+  const models = useModelsStore();
+  await models.initialize();
+  const timestamp = Math.floor(Date.now() / 1000);
+  await models.queueModel({
+    model: "folder",
+    data: {
+      id: "folder-test",
+      workspaceId: "workspace-personal",
+      parentId: null,
+      name: "Test folder",
+      sortPriority: 1000,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+  });
+  await models.queueModel({
+    model: "http_request",
+    data: {
+      id: "request-test",
+      workspaceId: "workspace-personal",
+      folderId: "folder-test",
+      name: "Test request",
+      method: "GET",
+      url: "",
+      parameters: [],
+      headers: [],
+      body: { type: "none" },
+      authentication: { type: "none" },
+      timeoutMs: 30_000,
+      sortPriority: 1000,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+  });
 });
 
 afterEach(() => {

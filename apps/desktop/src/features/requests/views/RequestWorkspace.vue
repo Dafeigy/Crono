@@ -14,6 +14,8 @@ import {
   Clock3,
   Copy,
   Download,
+  FilePlus2,
+  FolderPlus,
   Plus,
   Send,
   Square,
@@ -468,6 +470,10 @@ function formatBytes(value: number) {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function createFromEmptyState(kind: "request" | "folder") {
+  window.dispatchEvent(new CustomEvent(`crono:create-${kind}`));
+}
+
 onMounted(() => {
   document.addEventListener("pointerdown", onDocumentPointerDown);
   document.addEventListener("keydown", onDocumentKeydown);
@@ -804,6 +810,24 @@ onBeforeUnmount(() => {
           </label>
           <p>{{ t("request.timeoutDescription") }}</p>
         </div>
+      </div>
+    </div>
+
+    <div v-else class="workspace-empty-state">
+      <div class="workspace-empty-mark" aria-hidden="true">
+        <FilePlus2 :size="28" stroke-width="1.5" />
+      </div>
+      <h1>{{ t("workspace.emptyTitle") }}</h1>
+      <p>{{ t("workspace.emptyDescription") }}</p>
+      <div class="workspace-empty-actions">
+        <Button @click="createFromEmptyState('request')">
+          <FilePlus2 :size="15" />
+          {{ t("workspace.newRequest") }}
+        </Button>
+        <Button variant="outline" @click="createFromEmptyState('folder')">
+          <FolderPlus :size="15" />
+          {{ t("workspace.newFolder") }}
+        </Button>
       </div>
     </div>
 

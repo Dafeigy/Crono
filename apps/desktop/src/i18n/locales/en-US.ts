@@ -51,6 +51,8 @@ export default {
     renameCurrent: "Rename current workspace",
     collapseSidebar: "Collapse sidebar",
     expandSidebar: "Expand sidebar",
+    emptyTitle: "Your workspace is ready",
+    emptyDescription: "Create a request or folder to start building your API collection.",
   },
   request: {
     untitled: "Untitled request",

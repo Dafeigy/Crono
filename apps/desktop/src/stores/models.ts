@@ -69,37 +69,10 @@ function browserSnapshot(): WorkspaceSnapshot {
         updatedAt: now,
       },
     ],
-    folders: [
-      {
-        id: "folder-public-apis",
-        workspaceId: "workspace-personal",
-        parentId: null,
-        name: "Public APIs",
-        sortPriority: 1000,
-        createdAt: now,
-        updatedAt: now,
-      },
-    ],
+    folders: [],
     environments: [],
     cookieJars: [],
-    httpRequests: [
-      {
-        id: "request-health-check",
-        workspaceId: "workspace-personal",
-        folderId: "folder-public-apis",
-        name: "Health check",
-        method: "GET",
-        url: "https://api.example.com/v1/health",
-        parameters: [],
-        headers: [],
-        body: { type: "none" },
-        authentication: { type: "none" },
-        timeoutMs: 30_000,
-        sortPriority: 1000,
-        createdAt: now,
-        updatedAt: now,
-      },
-    ],
+    httpRequests: [],
   };
 }
 
