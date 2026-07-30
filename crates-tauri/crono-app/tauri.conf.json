@@ -28,7 +28,7 @@
     }
   },
   "bundle": {
-    "active": true,
+    "active": false,
     "targets": "all",
     "category": "DeveloperTool",
     "shortDescription": "A local-first desktop API client"

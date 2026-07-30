@@ -17,27 +17,54 @@ describe("models store", () => {
     vi.restoreAllMocks();
   });
 
+  it("starts the personal workspace without sample folders or requests", async () => {
+    const store = useModelsStore();
+    await store.initialize();
+
+    expect(store.currentWorkspace?.name).toBe("Personal APIs");
+    expect(store.folders).toEqual([]);
+    expect(store.httpRequests).toEqual([]);
+  });
+
   it("removes descendant folders and their requests after a folder deletion", async () => {
     const store = useModelsStore();
     await store.initialize();
     const timestamp = Math.floor(Date.now() / 1000);
+    const rootFolder: Folder = {
+      id: "folder-root",
+      workspaceId: "workspace-personal",
+      parentId: null,
+      name: "Root",
+      sortPriority: 1000,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
     const childFolder: Folder = {
       id: "folder-child",
       workspaceId: "workspace-personal",
-      parentId: "folder-public-apis",
+      parentId: rootFolder.id,
       name: "Child",
       sortPriority: 2000,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
-    const sourceRequest = store.httpRequests[0];
-    expect(sourceRequest).toBeDefined();
     const childRequest: HttpRequest = {
-      ...sourceRequest!,
       id: "request-child",
+      workspaceId: "workspace-personal",
       folderId: childFolder.id,
       name: "Child request",
+      method: "GET",
+      url: "",
+      parameters: [],
+      headers: [],
+      body: { type: "none" },
+      authentication: { type: "none" },
+      timeoutMs: 30_000,
+      sortPriority: 1000,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     };
+    await store.queueModel({ model: "folder", data: rootFolder });
     await store.queueModel({ model: "folder", data: childFolder });
     await store.queueModel({ model: "http_request", data: childRequest });
 
@@ -46,7 +73,7 @@ describe("models store", () => {
       sourceWindowId: "other-window",
       operation: "delete",
       modelKind: "folder",
-      modelId: "folder-public-apis",
+      modelId: rootFolder.id,
       workspaceId: "workspace-personal",
       model: null,
     } satisfies ModelChange);

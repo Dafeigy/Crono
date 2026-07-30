@@ -50,6 +50,8 @@ export default {
     renameCurrent: "重命名当前工作区",
     collapseSidebar: "收起侧边栏",
     expandSidebar: "展开侧边栏",
+    emptyTitle: "工作区已准备就绪",
+    emptyDescription: "新建请求或文件夹，开始整理你的 API 集合。",
   },
   request: {
     untitled: "未命名请求",
@@ -192,6 +194,19 @@ export default {
     placeholder: "搜索请求或执行命令…",
     noResults: "没有匹配的命令",
     navigation: "导航",
+    action: "操作",
+    actionFailed: "无法完成此操作。",
+    copyAsCurl: "复制为 cURL",
+    deleteRequest: "删除请求",
+    createEnvironment: "创建环境",
+    currentWorkspace: "当前工作区",
+    switchWorkspace: "切换工作区",
+    groups: {
+      actions: "操作",
+      requests: "切换请求",
+      folders: "目录",
+      workspaces: "切换工作区",
+    },
   },
   shortcuts: {
     title: "键盘快捷键",

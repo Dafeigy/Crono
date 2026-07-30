@@ -51,6 +51,8 @@ export default {
     renameCurrent: "Rename current workspace",
     collapseSidebar: "Collapse sidebar",
     expandSidebar: "Expand sidebar",
+    emptyTitle: "Your workspace is ready",
+    emptyDescription: "Create a request or folder to start building your API collection.",
   },
   request: {
     untitled: "Untitled request",
@@ -204,6 +206,19 @@ export default {
     placeholder: "Search requests or run a command…",
     noResults: "No matching commands",
     navigation: "Navigation",
+    action: "Action",
+    actionFailed: "The action could not be completed.",
+    copyAsCurl: "Copy as cURL",
+    deleteRequest: "Delete request",
+    createEnvironment: "Create environment",
+    currentWorkspace: "Current workspace",
+    switchWorkspace: "Switch workspace",
+    groups: {
+      actions: "Actions",
+      requests: "Switch request",
+      folders: "Folders",
+      workspaces: "Switch workspace",
+    },
   },
   shortcuts: {
     title: "Keyboard shortcuts",

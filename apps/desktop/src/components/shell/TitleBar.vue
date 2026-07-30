@@ -423,11 +423,15 @@ onMounted(() => {
   document.addEventListener("pointerdown", onDocumentPointerDown);
   document.addEventListener("keydown", onDocumentKeydown);
   window.addEventListener("crono:open-shortcuts", openShortcutsDialog);
+  window.addEventListener("crono:create-request", createRequest);
+  window.addEventListener("crono:create-folder", createFolder);
 });
 onUnmounted(() => {
   document.removeEventListener("pointerdown", onDocumentPointerDown);
   document.removeEventListener("keydown", onDocumentKeydown);
   window.removeEventListener("crono:open-shortcuts", openShortcutsDialog);
+  window.removeEventListener("crono:create-request", createRequest);
+  window.removeEventListener("crono:create-folder", createFolder);
 });
 </script>
 
@@ -715,6 +719,8 @@ onUnmounted(() => {
       <CommandDialog
         v-if="commandDialogOpen"
         @close="commandDialogOpen = false"
+        @create-workspace="createWorkspaceDialogOpen = true"
+        @open-environments="environmentDialogOpen = true"
       />
       <ShortcutsDialog
         v-if="shortcutsDialogOpen"

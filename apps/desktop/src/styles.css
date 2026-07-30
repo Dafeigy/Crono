@@ -4318,6 +4318,54 @@ kbd {
   grid-template-rows: minmax(0, 1fr);
 }
 
+.workspace-empty-state {
+  display: flex;
+  width: min(560px, calc(100% - 48px));
+  align-self: center;
+  justify-self: center;
+  flex-direction: column;
+  align-items: center;
+  color: var(--foreground);
+  text-align: center;
+}
+
+.workspace-empty-mark {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 18px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--muted);
+  color: var(--primary);
+}
+
+.workspace-empty-state h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.workspace-empty-state > p {
+  max-width: 440px;
+  margin: 8px 0 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.workspace-empty-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.workspace-empty-actions button {
+  gap: 7px;
+}
+
 .request-workspace.layout-horizontal {
   grid-template-columns: minmax(390px, 1.15fr) minmax(340px, 0.85fr);
 }
@@ -4785,6 +4833,15 @@ kbd {
   padding: 6px;
 }
 
+.command-group-label {
+  margin: 7px 9px 3px;
+  color: var(--crono-text-subtle);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .command-results > button {
   display: grid;
   width: 100%;
@@ -4803,9 +4860,14 @@ kbd {
 }
 
 .command-results > button:hover,
-.command-results > button:focus-visible {
+.command-results > button:focus-visible,
+.command-results > button.is-selected {
   background: var(--muted);
   color: var(--foreground);
+}
+
+.command-results > button.is-danger {
+  color: var(--destructive);
 }
 
 .command-results small {
@@ -4818,6 +4880,72 @@ kbd {
   color: var(--muted-foreground);
   font-size: 11px;
   text-align: center;
+}
+
+.command-error {
+  margin: 0;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--destructive);
+  font-size: 11px;
+}
+
+.command-confirmation {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 22px 22px 16px;
+}
+
+.command-confirmation-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--destructive) 12%, transparent);
+  color: var(--destructive);
+}
+
+.command-confirmation h2 {
+  margin: 1px 0 5px;
+  color: var(--foreground);
+  font-size: 14px;
+}
+
+.command-confirmation p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.command-confirmation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 22px 18px;
+}
+
+.command-confirmation-actions button {
+  min-width: 72px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  font-size: 11px;
+}
+
+.command-confirmation-actions button.is-danger {
+  border-color: color-mix(in oklch, var(--destructive) 55%, var(--border));
+  background: var(--destructive);
+  color: var(--destructive-foreground);
+}
+
+.command-confirmation-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 @media (max-width: 1040px) {
