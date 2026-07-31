@@ -3245,7 +3245,8 @@ kbd {
 
 .response-summary {
   position: relative;
-  z-index: 90;
+  /* Keep response controls above their pane without eclipsing titlebar menus. */
+  z-index: 30;
   display: flex;
   min-width: 0;
   align-items: center;
