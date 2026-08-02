@@ -391,7 +391,7 @@ dependencies = [
 
 [[package]]
 name = "crono-app"
-version = "0.1.0"
+version = "0.0.9"
 dependencies = [
  "crono-core",
  "crono-database",
@@ -408,7 +408,7 @@ dependencies = [
 
 [[package]]
 name = "crono-core"
-version = "0.1.0"
+version = "0.0.9"
 dependencies = [
  "crono-models",
  "serde",
@@ -416,7 +416,7 @@ dependencies = [
 
 [[package]]
 name = "crono-database"
-version = "0.1.0"
+version = "0.0.9"
 dependencies = [
  "crono-models",
  "rusqlite",
@@ -428,7 +428,7 @@ dependencies = [
 
 [[package]]
 name = "crono-http"
-version = "0.1.0"
+version = "0.0.9"
 dependencies = [
  "crono-database",
  "crono-models",
@@ -442,7 +442,7 @@ dependencies = [
 
 [[package]]
 name = "crono-models"
-version = "0.1.0"
+version = "0.0.9"
 dependencies = [
  "serde",
  "serde_json",

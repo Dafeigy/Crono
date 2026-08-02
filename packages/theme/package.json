@@ -1,6 +1,6 @@
 {
   "name": "@crono/theme",
-  "version": "0.1.0",
+  "version": "0.0.9",
   "private": true,
   "type": "module",
   "main": "src/index.ts",
@@ -10,4 +10,3 @@
     "test": "vitest run"
   }
 }
-

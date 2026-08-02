@@ -1,0 +1,53 @@
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Build Windows installer and portable executable
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Windows bundles
+        run: npm run desktop:build
+
+      - name: Collect release files
+        shell: pwsh
+        run: |
+          $releaseDir = "dist/release"
+          New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+
+          Copy-Item "target/release/crono-app.exe" "$releaseDir/Crono_${{ github.ref_name }}_portable.exe"
+          Get-ChildItem "target/release/bundle/nsis" -Filter "*.exe" |
+            Copy-Item -Destination $releaseDir
+          Get-ChildItem "target/release/bundle/msi" -Filter "*.msi" |
+            Copy-Item -Destination $releaseDir
+
+      - name: Upload Windows release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Crono-${{ github.ref_name }}-windows
+          path: dist/release/*
+          if-no-files-found: error
+          retention-days: 30
