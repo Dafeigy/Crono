@@ -3625,7 +3625,7 @@ kbd {
   border: 1px solid var(--border);
   border-radius: 5px;
   outline: 0;
-  background: var(--input, var(--background));
+  background: var(--card);
   color: var(--foreground);
   font-size: 11px;
   text-align: start;
