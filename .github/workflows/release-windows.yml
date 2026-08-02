@@ -6,7 +6,7 @@ on:
       - "v*.*.*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-windows:
@@ -36,13 +36,17 @@ jobs:
         shell: pwsh
         run: |
           $releaseDir = "dist/release"
+          $tag = "${{ github.ref_name }}"
           New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
 
-          Copy-Item "target/release/crono-app.exe" "$releaseDir/Crono_${{ github.ref_name }}_portable.exe"
-          Get-ChildItem "target/release/bundle/nsis" -Filter "*.exe" |
-            Copy-Item -Destination $releaseDir
-          Get-ChildItem "target/release/bundle/msi" -Filter "*.msi" |
-            Copy-Item -Destination $releaseDir
+          $nsis = Get-ChildItem "target/release/bundle/nsis" -Filter "*.exe" |
+            Select-Object -First 1
+          $msi = Get-ChildItem "target/release/bundle/msi" -Filter "*.msi" |
+            Select-Object -First 1
+
+          Copy-Item "target/release/crono-app.exe" "$releaseDir/Crono_${tag}_windows_x64_portable.exe"
+          Copy-Item $nsis.FullName "$releaseDir/Crono_${tag}_windows_x64_setup.exe"
+          Copy-Item $msi.FullName "$releaseDir/Crono_${tag}_windows_x64_en-US.msi"
 
       - name: Upload Windows release artifacts
         uses: actions/upload-artifact@v4
@@ -50,4 +54,17 @@ jobs:
           name: Crono-${{ github.ref_name }}-windows
           path: dist/release/*
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $assets = Get-ChildItem "dist/release" -File |
+            Select-Object -ExpandProperty FullName
+
+          gh release create "${{ github.ref_name }}" $assets `
+            --verify-tag `
+            --title "Crono ${{ github.ref_name }}" `
+            --generate-notes
