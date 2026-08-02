@@ -122,6 +122,8 @@ export default {
     fullEvents: "Full events",
     extractionFormat: "Extraction format",
     customJsonPath: "Custom JSONPath",
+    jsonPathContextMenu: "JSONPath actions",
+    useAsJsonPath: "Use as JSONPath",
     waitingForEvents: "Waiting for the first stream event…",
     noStreamEvents: "No stream events found.",
     jumpToLatestEvent: "Jump to latest event",

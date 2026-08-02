@@ -9,16 +9,28 @@ import { EditorView, lineNumbers } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { codeMirrorCspNonceExtension } from "./codeMirrorCsp";
+import { jsonPathAtPosition } from "./jsonPathAtPosition";
+
+export interface JsonPathContextPayload {
+  path: string;
+  clientX: number;
+  clientY: number;
+}
 
 const props = withDefaults(
   defineProps<{
     content: string;
     language?: "json" | "text";
+    enableJsonPathContext?: boolean;
   }>(),
   {
     language: "text",
   },
 );
+
+const emit = defineEmits<{
+  jsonPathContext: [payload: JsonPathContextPayload];
+}>();
 
 const editorElement = ref<HTMLElement>();
 const language = new Compartment();
@@ -93,6 +105,27 @@ onMounted(() => {
         EditorView.lineWrapping,
         EditorState.readOnly.of(true),
         EditorView.editable.of(false),
+        EditorView.domEventHandlers({
+          contextmenu(event, editorView) {
+            if (!props.enableJsonPathContext || props.language !== "json") {
+              return false;
+            }
+            const position = editorView.posAtCoords({
+              x: event.clientX,
+              y: event.clientY,
+            });
+            if (position === null) return false;
+            const path = jsonPathAtPosition(editorView.state, position);
+            if (!path) return false;
+            event.preventDefault();
+            emit("jsonPathContext", {
+              path,
+              clientX: event.clientX,
+              clientY: event.clientY,
+            });
+            return true;
+          },
+        }),
         EditorView.contentAttributes.of({
           "aria-label": "Response body",
           tabindex: "0",

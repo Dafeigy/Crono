@@ -37,7 +37,9 @@ function mountViewer() {
       plugins: [i18n],
       stubs: {
         ResponseCodeViewer: {
-          props: ["content", "language"],
+          name: "ResponseCodeViewer",
+          props: ["content", "language", "enableJsonPathContext"],
+          emits: ["jsonPathContext"],
           template: '<pre class="stub-code-viewer">{{ content }}</pre>',
         },
       },
@@ -79,6 +81,35 @@ describe("StreamingResponseViewer", () => {
     expect(wrapper.find('input[aria-label="JSONPath"]').element.getAttribute("value")).toBe(
       "$.choices[0].delta.content",
     );
+  });
+
+  it("uses an event detail field as a custom JSONPath", async () => {
+    const wrapper = mountViewer();
+    await wrapper.findAll('.stream-event-list [role="option"]')[1]!.trigger("click");
+
+    wrapper.findComponent({ name: "ResponseCodeViewer" }).vm.$emit(
+      "jsonPathContext",
+      {
+        path: "$.choices[0].delta.content",
+        clientX: 120,
+        clientY: 200,
+      },
+    );
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find(".stream-jsonpath-context-menu").exists()).toBe(true);
+    await wrapper.find(".stream-jsonpath-context-menu button").trigger("click");
+
+    expect(wrapper.find(".stream-view-select .stream-select-trigger").text()).toContain(
+      "JSONPath",
+    );
+    expect(wrapper.find(".stream-preset-select .stream-select-trigger").text()).toContain(
+      "Custom JSONPath",
+    );
+    expect(wrapper.find<HTMLInputElement>('input[aria-label="JSONPath"]').element.value).toBe(
+      "$.choices[0].delta.content",
+    );
+    expect(wrapper.find(".stream-extracted-text pre").text()).toBe("Hello world");
   });
 
   it("resizes adjacent panels with the keyboard and remembers the ratio", async () => {

@@ -3665,6 +3665,24 @@ kbd {
   width: max(100%, 238px);
 }
 
+.stream-jsonpath-context-menu {
+  position: absolute;
+  z-index: 100;
+  width: min(244px, calc(100% - 16px));
+}
+
+.stream-jsonpath-context-menu > code {
+  display: block;
+  min-width: 0;
+  margin: 2px 7px 5px;
+  overflow: hidden;
+  color: var(--crono-text-subtle);
+  font-size: 10px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .stream-inspector-controls input {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }

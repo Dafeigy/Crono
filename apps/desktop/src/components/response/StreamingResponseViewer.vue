@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, ChevronDown, Copy, X } from "lucide-vue-next";
+import { Braces, Check, ChevronDown, Copy, X } from "lucide-vue-next";
 import {
   computed,
   nextTick,
@@ -16,6 +16,7 @@ import {
   type StreamExtractionPresetId,
 } from "../../features/requests/streamingResponse";
 import ResponseCodeViewer from "./ResponseCodeViewer.vue";
+import type { JsonPathContextPayload } from "./ResponseCodeViewer.vue";
 
 const props = defineProps<{
   body: string;
@@ -30,6 +31,10 @@ const viewMenuOpen = ref(false);
 const presetMenuOpen = ref(false);
 const viewMenuRoot = ref<HTMLElement>();
 const presetMenuRoot = ref<HTMLElement>();
+const jsonPathContextMenuRoot = ref<HTMLElement>();
+const jsonPathContextMenu = ref<
+  { path: string; left: number; top: number } | undefined
+>();
 const selectedPreset = ref<StreamExtractionPresetId>(
   STREAM_EXTRACTION_PRESETS[0].id,
 );
@@ -147,12 +152,57 @@ function onDocumentPointerDown(event: PointerEvent) {
   const target = event.target as Node;
   if (!viewMenuRoot.value?.contains(target)) viewMenuOpen.value = false;
   if (!presetMenuRoot.value?.contains(target)) presetMenuOpen.value = false;
+  if (!jsonPathContextMenuRoot.value?.contains(target)) {
+    jsonPathContextMenu.value = undefined;
+  }
 }
 
 function onDocumentKeydown(event: KeyboardEvent) {
   if (event.key !== "Escape") return;
   viewMenuOpen.value = false;
   presetMenuOpen.value = false;
+  jsonPathContextMenu.value = undefined;
+}
+
+async function openJsonPathContextMenu(payload: JsonPathContextPayload) {
+  const inspector = inspectorElement.value;
+  if (!inspector) return;
+  const bounds = inspector.getBoundingClientRect();
+  jsonPathContextMenu.value = {
+    path: payload.path,
+    left: Math.max(8, payload.clientX - bounds.left),
+    top: Math.max(8, payload.clientY - bounds.top),
+  };
+  viewMenuOpen.value = false;
+  presetMenuOpen.value = false;
+  await nextTick();
+
+  const menu = jsonPathContextMenuRoot.value;
+  if (!menu || !jsonPathContextMenu.value) return;
+  jsonPathContextMenu.value = {
+    ...jsonPathContextMenu.value,
+    left: Math.max(
+      8,
+      Math.min(
+        jsonPathContextMenu.value.left,
+        bounds.width - menu.offsetWidth - 8,
+      ),
+    ),
+    top: Math.max(
+      8,
+      Math.min(jsonPathContextMenu.value.top, bounds.height - menu.offsetHeight - 8),
+    ),
+  };
+  menu.querySelector<HTMLButtonElement>("button")?.focus();
+}
+
+function useContextJsonPath() {
+  const path = jsonPathContextMenu.value?.path;
+  if (!path) return;
+  jsonPath.value = path;
+  selectedPreset.value = "custom";
+  viewMode.value = "jsonpath";
+  jsonPathContextMenu.value = undefined;
 }
 
 function updateJsonPath(event: Event) {
@@ -325,6 +375,7 @@ watch(
   () => {
     selectedEventIndex.value = null;
     followTail.value = true;
+    jsonPathContextMenu.value = undefined;
   },
 );
 
@@ -545,6 +596,8 @@ onMounted(() => {
       <ResponseCodeViewer
         :content="selectedEventContent"
         :language="selectedEventLanguage"
+        :enable-json-path-context="selectedEventLanguage === 'json'"
+        @json-path-context="openJsonPathContextMenu"
       />
     </section>
 
@@ -585,5 +638,23 @@ onMounted(() => {
         {{ t("response.noExtractedText") }}
       </p>
     </section>
+
+    <div
+      v-if="jsonPathContextMenu"
+      ref="jsonPathContextMenuRoot"
+      class="response-action-menu stream-jsonpath-context-menu"
+      role="menu"
+      :aria-label="t('response.jsonPathContextMenu')"
+      :style="{
+        left: `${jsonPathContextMenu.left}px`,
+        top: `${jsonPathContextMenu.top}px`,
+      }"
+    >
+      <code :title="jsonPathContextMenu.path">{{ jsonPathContextMenu.path }}</code>
+      <button type="button" role="menuitem" @click="useContextJsonPath">
+        <Braces :size="14" aria-hidden="true" />
+        <span>{{ t("response.useAsJsonPath") }}</span>
+      </button>
+    </div>
   </div>
 </template>

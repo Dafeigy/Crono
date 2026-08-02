@@ -116,6 +116,8 @@ export default {
     fullEvents: "完整事件",
     extractionFormat: "提取格式",
     customJsonPath: "自定义 JSONPath",
+    jsonPathContextMenu: "JSONPath 操作",
+    useAsJsonPath: "用作 JSONPath",
     waitingForEvents: "正在等待第一个流事件…",
     noStreamEvents: "未找到流事件。",
     jumpToLatestEvent: "跳转到最新事件",
