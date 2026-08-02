@@ -62,6 +62,7 @@ describe("StreamingResponseViewer", () => {
     const wrapper = mountViewer();
     const events = wrapper.findAll('.stream-event-list [role="option"]');
     expect(events).toHaveLength(4);
+    expect(wrapper.find(".stream-event-count").exists()).toBe(false);
 
     await events[1]!.trigger("click");
 

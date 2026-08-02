@@ -3570,11 +3570,11 @@ kbd {
 }
 
 .stream-inspector-controls {
-  display: flex;
+  display: grid;
   min-width: 0;
   min-height: 36px;
-  flex-wrap: wrap;
   align-items: center;
+  grid-template-columns: minmax(0, 1fr);
   gap: 5px;
   padding: 4px 7px;
   border-bottom: 1px solid var(--crono-border-subtle);
@@ -3583,25 +3583,20 @@ kbd {
 
 .stream-select-root,
 .stream-inspector-controls label {
-  min-width: 100px;
-  flex: 0 1 170px;
+  width: 100%;
+  min-width: 0;
 }
 
 .stream-select-root {
   position: relative;
 }
 
-.stream-view-select {
-  flex-basis: 125px;
-}
-
-.stream-preset-select {
-  flex-basis: 205px;
+.stream-inspector.is-jsonpath .stream-inspector-controls {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 5fr);
 }
 
 .stream-inspector-controls .stream-jsonpath-input {
-  min-width: 150px;
-  flex: 1 1 210px;
+  grid-column: 1 / -1;
 }
 
 .stream-inspector-controls input {
@@ -3691,33 +3686,6 @@ kbd {
 .stream-inspector-controls input:focus-visible {
   border-color: var(--ring);
   box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 24%, transparent);
-}
-
-.stream-event-count {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 5px;
-  margin-left: auto;
-  color: var(--crono-text-subtle);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 10px;
-  white-space: nowrap;
-}
-
-.stream-live-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--crono-success);
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--crono-success) 14%, transparent);
-  animation: stream-live-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes stream-live-pulse {
-  50% {
-    opacity: 0.46;
-  }
 }
 
 .stream-event-list {
@@ -3934,12 +3902,6 @@ kbd {
 
 .stream-event-detail .cm-editor {
   font-size: 13px !important;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .stream-live-dot {
-    animation: none;
-  }
 }
 
 .response-code-viewer > .cm-editor {

@@ -509,10 +509,6 @@ onMounted(() => {
           />
         </label>
       </template>
-      <span class="stream-event-count" role="status">
-        <span v-if="isLive" class="stream-live-dot" aria-hidden="true" />
-        {{ t("response.streamEvents", { count: parsed.eventCount }) }}
-      </span>
     </div>
 
     <div
