@@ -287,6 +287,14 @@ impl HttpExecutor {
                 response_id: context.response_id.clone(),
                 sent_bytes,
                 received_bytes,
+                status: status.as_u16(),
+                status_text: status.canonical_reason().unwrap_or_default().to_owned(),
+                content_type: content_type.clone(),
+                body_chunk: if is_text_content_type(content_type.as_deref()) {
+                    chunk.to_vec()
+                } else {
+                    Vec::new()
+                },
             });
         }
         file.flush().await?;
@@ -395,7 +403,7 @@ mod tests {
         collections::HashMap,
         io::{Read, Write},
         net::TcpListener,
-        sync::Arc,
+        sync::{Arc, Mutex},
         thread,
     };
 
@@ -450,6 +458,8 @@ mod tests {
             created_at: 0,
             updated_at: 0,
         };
+        let progress_events = Arc::new(Mutex::new(Vec::new()));
+        let captured_progress = progress_events.clone();
         let result = HttpExecutor::new()
             .unwrap()
             .execute(
@@ -461,7 +471,9 @@ mod tests {
                     variables: HashMap::new(),
                 },
                 CancellationToken::new(),
-                Arc::new(|_| {}),
+                Arc::new(move |progress| {
+                    captured_progress.lock().unwrap().push(progress);
+                }),
                 Arc::new(|state| {
                     assert!(matches!(
                         state,
@@ -472,6 +484,16 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(result.status, 200);
+        let progress_events = progress_events.lock().unwrap();
+        assert_eq!(progress_events.last().unwrap().status, 200);
+        assert_eq!(
+            progress_events
+                .iter()
+                .flat_map(|progress| progress.body_chunk.iter().copied())
+                .collect::<Vec<_>>(),
+            b"{\"ok\":true}"
+        );
+        drop(progress_events);
         assert_eq!(
             tokio::fs::read_to_string(result.body_path).await.unwrap(),
             "{\"ok\":true}"

@@ -146,6 +146,10 @@ export interface HttpProgress {
   responseId: string;
   sentBytes: number;
   receivedBytes: number;
+  status: number;
+  statusText: string;
+  contentType: string | null;
+  bodyChunk: number[];
 }
 
 export interface HttpStateEvent {

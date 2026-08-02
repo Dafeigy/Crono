@@ -30,7 +30,10 @@ export const useHttpStore = defineStore("http", () => {
   let disposeProgress: (() => void) | undefined;
   let disposeState: (() => void) | undefined;
   let historyLoadSequence = 0;
-  const pendingStateEvents = new Map<string, HttpStateEvent>();
+  let responseDecoder = new TextDecoder();
+  let awaitingTaskStart = false;
+  const pendingStateEvents = new Map<string, HttpStateEvent[]>();
+  const pendingProgressEvents = new Map<string, HttpProgress[]>();
 
   const isBusy = computed(
     () => !!state.value && !terminalStates.includes(state.value),
@@ -41,21 +44,66 @@ export const useHttpStore = defineStore("http", () => {
     initialized.value = true;
     if (!("__TAURI_INTERNALS__" in window)) return;
     disposeProgress = await httpService.onProgress((event) => {
-      if (event.taskId === activeTaskId.value) progress.value = event;
+      if (event.taskId !== activeTaskId.value) {
+        if (!awaitingTaskStart) return;
+        const pending = pendingProgressEvents.get(event.taskId) ?? [];
+        pending.push(event);
+        pendingProgressEvents.set(event.taskId, pending);
+        return;
+      }
+      handleProgressEvent(event);
     });
     disposeState = await httpService.onState((event) => {
       if (event.taskId !== activeTaskId.value) {
-        pendingStateEvents.set(event.taskId, event);
+        if (!awaitingTaskStart) return;
+        const pending = pendingStateEvents.get(event.taskId) ?? [];
+        pending.push(event);
+        pendingStateEvents.set(event.taskId, pending);
         return;
       }
       void handleStateEvent(event);
     });
   }
 
+  function isTextContentType(contentType: string | null) {
+    if (!contentType) return true;
+    const value = contentType.toLowerCase();
+    return (
+      value.startsWith("text/") ||
+      value.includes("json") ||
+      value.includes("xml") ||
+      value.includes("javascript") ||
+      value.includes("graphql")
+    );
+  }
+
+  function handleProgressEvent(event: HttpProgress) {
+    if (event.taskId !== activeTaskId.value) return;
+    progress.value = event;
+    bodyIsText.value = isTextContentType(event.contentType);
+    if (activeResponse.value?.id === event.responseId) {
+      activeResponse.value = {
+        ...activeResponse.value,
+        status: event.status,
+        statusText: event.statusText,
+        contentType: event.contentType,
+        bodySize: event.receivedBytes,
+      };
+    }
+    if (bodyIsText.value && event.bodyChunk.length) {
+      body.value += responseDecoder.decode(new Uint8Array(event.bodyChunk), {
+        stream: true,
+      });
+    }
+  }
+
   async function handleStateEvent(event: HttpStateEvent) {
     if (event.taskId !== activeTaskId.value) return;
     state.value = event.state;
     if (!event.response) return;
+    if (terminalStates.includes(event.state) && bodyIsText.value) {
+      body.value += responseDecoder.decode();
+    }
     activeResponse.value = event.response;
     if (event.state === "closed") {
       await loadResponse(event.response);
@@ -76,20 +124,34 @@ export const useHttpStore = defineStore("http", () => {
   async function send(requestId: string, environmentId?: string) {
     await initialize();
     error.value = undefined;
+    activeTaskId.value = undefined;
+    activeResponse.value = undefined;
     body.value = "";
+    bodyIsText.value = true;
+    responseDecoder = new TextDecoder();
     timeline.value = [];
     progress.value = undefined;
     activeRequestId.value = requestId;
     state.value = "initialized";
+    awaitingTaskStart = true;
     try {
       const task = await httpService.send(requestId, environmentId);
       activeTaskId.value = task.taskId;
-      const pending = pendingStateEvents.get(task.taskId);
-      if (pending) {
-        pendingStateEvents.delete(task.taskId);
+      awaitingTaskStart = false;
+      const pendingStates = pendingStateEvents.get(task.taskId) ?? [];
+      pendingStateEvents.clear();
+      for (const pending of pendingStates) {
         await handleStateEvent(pending);
       }
+      const pendingProgress = pendingProgressEvents.get(task.taskId) ?? [];
+      pendingProgressEvents.clear();
+      if (!terminalStates.includes(state.value ?? "initialized")) {
+        for (const pending of pendingProgress) handleProgressEvent(pending);
+      }
     } catch (cause) {
+      awaitingTaskStart = false;
+      pendingStateEvents.clear();
+      pendingProgressEvents.clear();
       state.value = "failed";
       error.value = isAppError(cause)
         ? cause
@@ -128,6 +190,7 @@ export const useHttpStore = defineStore("http", () => {
     progress.value = undefined;
     body.value = "";
     bodyIsText.value = true;
+    responseDecoder = new TextDecoder();
     timeline.value = [];
     error.value = undefined;
     const loadedHistory =
@@ -153,6 +216,7 @@ export const useHttpStore = defineStore("http", () => {
     progress.value = undefined;
     body.value = "";
     bodyIsText.value = true;
+    responseDecoder = new TextDecoder();
     timeline.value = [];
   }
 

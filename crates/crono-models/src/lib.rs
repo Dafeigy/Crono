@@ -239,6 +239,10 @@ pub struct HttpProgress {
     pub response_id: String,
     pub sent_bytes: u64,
     pub received_bytes: u64,
+    pub status: u16,
+    pub status_text: String,
+    pub content_type: Option<String>,
+    pub body_chunk: Vec<u8>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]

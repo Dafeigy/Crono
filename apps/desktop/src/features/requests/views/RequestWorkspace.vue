@@ -40,9 +40,13 @@ import { useHttpStore } from "../../../stores/http";
 import { useModelsStore } from "../../../stores/models";
 import { shortcutLabel } from "../../../shortcuts";
 import { useUiStore } from "../../../stores/ui";
+import { parseStreamingResponse } from "../streamingResponse";
 
 const ResponseCodeViewer = defineAsyncComponent(
   () => import("../../../components/response/ResponseCodeViewer.vue"),
+);
+const StreamingResponseViewer = defineAsyncComponent(
+  () => import("../../../components/response/StreamingResponseViewer.vue"),
 );
 
 const { t } = useI18n();
@@ -149,8 +153,12 @@ const selectedRequest = computed(
     models.httpRequests.find(({ id }) => id === route.query.request) ??
     models.currentRequest,
 );
+const streamingResponse = computed(() =>
+  parseStreamingResponse(http.body, http.activeResponse?.contentType),
+);
 const formattedBody = computed(() => {
   const content = http.body;
+  if (streamingResponse.value.isStreaming) return streamingResponse.value.content;
   if (!content || !http.activeResponse?.contentType?.includes("json")) return content;
   try {
     return JSON.stringify(JSON.parse(content), null, 2);
@@ -162,7 +170,10 @@ const displayedBody = computed(() =>
   responseMode.value === "formatted" ? formattedBody.value : http.body,
 );
 const responseLanguage = computed<"json" | "text">(() =>
-  http.activeResponse?.contentType?.includes("json") ? "json" : "text",
+  !streamingResponse.value.isStreaming &&
+  http.activeResponse?.contentType?.includes("json")
+    ? "json"
+    : "text",
 );
 const historyGroups = computed(() => {
   const groups = new Map<string, HttpResponse[]>();
@@ -451,7 +462,7 @@ function showActionFeedback(message: string) {
 async function copyResponseBody() {
   if (!http.activeResponse) return;
   try {
-    await navigator.clipboard.writeText(http.body);
+    await navigator.clipboard.writeText(displayedBody.value);
     responseMenuOpen.value = false;
     showActionFeedback(t("response.copied"));
   } catch {
@@ -1046,8 +1057,10 @@ onBeforeUnmount(() => {
       role="separator"
       :aria-orientation="ui.splitLayout === 'horizontal' ? 'vertical' : 'horizontal'"
       :aria-valuenow="Math.round(requestSplit)"
-      aria-valuemin="25"
+      :aria-valuemin="ui.splitLayout === 'horizontal' ? 30 : 25"
       aria-valuemax="75"
+      :aria-label="t('response.resizePanels')"
+      :title="t('response.resizePanels')"
       tabindex="0"
       @pointerdown="startSplitResize"
       @keydown="onSplitKeydown"
@@ -1177,7 +1190,15 @@ onBeforeUnmount(() => {
             <div v-if="responseMenuOpen" class="response-action-menu" role="menu">
               <button type="button" role="menuitem" @click="setResponseMode('formatted')">
                 <Check :class="{ 'is-hidden': responseMode !== 'formatted' }" :size="13" />
-                <span>{{ t("response.formatted") }}</span>
+                <span>
+                  {{
+                    t(
+                      streamingResponse.isStreaming
+                        ? "response.parsedStream"
+                        : "response.formatted",
+                    )
+                  }}
+                </span>
               </button>
               <button type="button" role="menuitem" @click="setResponseMode('raw')">
                 <Check :class="{ 'is-hidden': responseMode !== 'raw' }" :size="13" />
@@ -1196,7 +1217,9 @@ onBeforeUnmount(() => {
               <button
                 type="button"
                 role="menuitem"
-                :disabled="!http.activeResponse || !http.bodyIsText"
+                :disabled="
+                  !http.activeResponse || !http.bodyIsText || !displayedBody
+                "
                 @click="copyResponseBody"
               >
                 <Copy :size="13" />
@@ -1237,7 +1260,11 @@ onBeforeUnmount(() => {
         </span>
       </div>
 
-      <div v-if="http.isBusy" class="response-loading" role="status">
+      <div
+        v-if="http.isBusy && !streamingResponse.isStreaming"
+        class="response-loading"
+        role="status"
+      >
         <span class="response-spinner" />
         <strong>{{ t(`response.states.${http.state}`) }}</strong>
         <small v-if="http.progress">
@@ -1249,8 +1276,19 @@ onBeforeUnmount(() => {
         v-else-if="responseTab === 'response' && http.activeResponse"
         class="response-viewer"
       >
+        <StreamingResponseViewer
+          v-if="
+            http.bodyIsText &&
+            streamingResponse.isStreaming &&
+            responseMode === 'formatted'
+          "
+          :body="http.body"
+          :content-type="http.activeResponse.contentType"
+          :is-live="http.isBusy"
+          :response-id="http.activeResponse.id"
+        />
         <ResponseCodeViewer
-          v-if="http.bodyIsText"
+          v-else-if="http.bodyIsText"
           :content="displayedBody"
           :language="responseLanguage"
         />

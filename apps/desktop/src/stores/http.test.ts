@@ -2,7 +2,9 @@
 
 import {
   httpService,
+  type HttpProgress,
   type HttpResponse,
+  type HttpStateEvent,
   type TimelineEvent,
 } from "@crono/client-core";
 import { createPinia, setActivePinia } from "pinia";
@@ -149,5 +151,64 @@ describe("http store", () => {
     expect(store.activeResponse).toBeUndefined();
     expect(store.body).toBe("");
     expect(store.latestResponses["request-one"]).toBeUndefined();
+  });
+
+  it("decodes live body chunks without losing events emitted before send resolves", async () => {
+    let emitProgress!: (event: HttpProgress) => void;
+    let emitState!: (event: HttpStateEvent) => void;
+    vi.spyOn(httpService, "onProgress").mockImplementation(async (handler) => {
+      emitProgress = handler;
+      return vi.fn();
+    });
+    vi.spyOn(httpService, "onState").mockImplementation(async (handler) => {
+      emitState = handler;
+      return vi.fn();
+    });
+
+    const initial: HttpResponse = {
+      ...response("response-live", "request-live"),
+      state: "initialized",
+      status: null,
+      statusText: null,
+      contentType: null,
+      bodySize: 0,
+    };
+    const encoded = new TextEncoder().encode("你");
+    vi.spyOn(httpService, "send").mockImplementation(async () => {
+      emitState({
+        taskId: "task-live",
+        responseId: initial.id,
+        state: "initialized",
+        response: initial,
+      });
+      emitState({
+        taskId: "task-live",
+        responseId: initial.id,
+        state: "streaming",
+        response: null,
+      });
+      for (const [index, bodyChunk] of [encoded.slice(0, 2), encoded.slice(2)].entries()) {
+        emitProgress({
+          taskId: "task-live",
+          responseId: initial.id,
+          sentBytes: 10,
+          receivedBytes: index === 0 ? 2 : 3,
+          status: 200,
+          statusText: "OK",
+          contentType: "text/event-stream; charset=utf-8",
+          bodyChunk: [...bodyChunk],
+        });
+      }
+      return { taskId: "task-live", responseId: initial.id };
+    });
+
+    const store = useHttpStore();
+    await store.send("request-live");
+
+    expect(store.state).toBe("streaming");
+    expect(store.body).toBe("你");
+    expect(store.activeResponse?.status).toBe(200);
+    expect(store.activeResponse?.contentType).toContain("text/event-stream");
+    expect(store.progress?.receivedBytes).toBe(3);
   });
 });
