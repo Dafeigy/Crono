@@ -15,6 +15,7 @@ import {
   Clock3,
   Copy,
   Download,
+  FileJson,
   FilePlus2,
   FolderPlus,
   Plus,
@@ -175,6 +176,16 @@ const responseLanguage = computed<"json" | "text">(() =>
     ? "json"
     : "text",
 );
+const isJsonResponse = computed(() => {
+  if (!http.activeResponse || !http.bodyIsText || !http.body) return false;
+  if (http.activeResponse.contentType?.includes("json")) return true;
+  try {
+    JSON.parse(http.body);
+    return true;
+  } catch {
+    return false;
+  }
+});
 const historyGroups = computed(() => {
   const groups = new Map<string, HttpResponse[]>();
   const now = Date.now();
@@ -471,9 +482,9 @@ async function copyResponseBody() {
   }
 }
 
-async function exportResponseBody() {
+async function exportResponseBody(asJson = false) {
   if (!http.activeResponse) return;
-  const extension = http.activeResponse.contentType?.includes("json")
+  const extension = asJson || http.activeResponse.contentType?.includes("json")
     ? "json"
     : http.bodyIsText
       ? "txt"
@@ -1209,7 +1220,7 @@ onBeforeUnmount(() => {
                 type="button"
                 role="menuitem"
                 :disabled="!http.activeResponse"
-                @click="exportResponseBody"
+                @click="() => exportResponseBody()"
               >
                 <Download :size="13" />
                 <span>{{ t("response.saveToFile") }}</span>
@@ -1296,6 +1307,28 @@ onBeforeUnmount(() => {
           <Braces :size="24" />
           <strong>{{ t("response.binaryBody") }}</strong>
           <p>{{ t("response.binaryBodyDescription") }}</p>
+        </div>
+        <div class="response-viewer-actions" aria-label="Response actions">
+          <button
+            type="button"
+            class="response-viewer-action"
+            :disabled="!http.bodyIsText || !displayedBody"
+            :aria-label="t('response.copyToClipboard')"
+            :title="t('response.copyToClipboard')"
+            @click="copyResponseBody"
+          >
+            <Copy :size="15" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            class="response-viewer-action"
+            :disabled="!isJsonResponse"
+            :aria-label="t('response.saveAsJson')"
+            :title="t('response.saveAsJson')"
+            @click="() => exportResponseBody(true)"
+          >
+            <FileJson :size="15" aria-hidden="true" />
+          </button>
         </div>
       </div>
 

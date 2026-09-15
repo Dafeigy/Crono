@@ -132,6 +132,8 @@ export default {
     noStreamContentDescription: "切换到原始响应以检查完整的流事件。",
     saveToFile: "保存到文件",
     copyBody: "复制正文",
+    copyToClipboard: "复制到剪贴板",
+    saveAsJson: "保存为 JSON",
     copied: "已复制正文",
     copyFailed: "复制失败",
     exported: "已开始导出",

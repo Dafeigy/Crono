@@ -3555,8 +3555,55 @@ kbd {
 
 .response-viewer,
 .response-request-view {
+  position: relative;
   display: grid;
   grid-template-rows: minmax(0, 1fr);
+}
+
+.response-viewer-actions {
+  position: absolute;
+  z-index: 10;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--crono-border-subtle);
+  border-radius: 6px;
+  background: color-mix(in oklch, var(--popover) 90%, transparent);
+  box-shadow: 0 6px 18px color-mix(in oklch, var(--crono-shadow) 24%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.response-viewer-action {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted-foreground);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.response-viewer-action:hover:not(:disabled),
+.response-viewer-action:focus-visible {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.response-viewer-action:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.response-viewer-action:disabled {
+  cursor: default;
+  opacity: 0.38;
 }
 
 .stream-inspector {

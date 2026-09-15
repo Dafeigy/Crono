@@ -139,6 +139,8 @@ export default {
       "Switch to the raw response to inspect the original stream events.",
     saveToFile: "Save to file",
     copyBody: "Copy body",
+    copyToClipboard: "Copy to clipboard",
+    saveAsJson: "Save as JSON",
     copied: "Body copied",
     copyFailed: "Copy failed",
     exported: "Export started",
