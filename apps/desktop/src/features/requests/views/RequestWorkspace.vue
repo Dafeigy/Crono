@@ -41,6 +41,7 @@ import { useHttpStore } from "../../../stores/http";
 import { useModelsStore } from "../../../stores/models";
 import { shortcutLabel } from "../../../shortcuts";
 import { useUiStore } from "../../../stores/ui";
+import { jsonSyntaxError } from "../jsonSyntax";
 import { parseStreamingResponse } from "../streamingResponse";
 
 const ResponseCodeViewer = defineAsyncComponent(
@@ -186,6 +187,10 @@ const isJsonResponse = computed(() => {
     return false;
   }
 });
+const jsonBodySyntaxError = computed(() => {
+  const body = draft.value?.body;
+  return body?.type === "json" ? jsonSyntaxError(body.value) : undefined;
+});
 const historyGroups = computed(() => {
   const groups = new Map<string, HttpResponse[]>();
   const now = Date.now();
@@ -328,7 +333,7 @@ function persistDraft() {
 }
 
 async function sendRequest() {
-  if (!draft.value || !models.persistenceAvailable) return;
+  if (!draft.value || !models.persistenceAvailable || jsonBodySyntaxError.value) return;
   try {
     await persistDraft();
     await models.flushPendingModels();
@@ -647,7 +652,11 @@ onBeforeUnmount(() => {
     :class="`layout-${ui.splitLayout}`"
     :style="requestSplitStyle"
   >
-    <div v-if="draft" class="request-composer">
+    <div
+      v-if="draft"
+      class="request-composer"
+      :class="{ 'has-error': Boolean(http.error) }"
+    >
       <div class="url-bar">
         <div ref="methodMenuRoot" class="method-menu-root">
           <button
@@ -697,7 +706,10 @@ onBeforeUnmount(() => {
             variant="ghost"
             size="icon"
             type="button"
-            :disabled="!http.isBusy && !models.persistenceAvailable"
+            :disabled="
+              !http.isBusy &&
+              (!models.persistenceAvailable || Boolean(jsonBodySyntaxError))
+            "
             :aria-label="t(http.isBusy ? 'request.cancel' : 'request.send')"
             :title="
               http.isBusy
@@ -941,11 +953,29 @@ onBeforeUnmount(() => {
               {{ t("request.addField") }}
             </button>
           </div>
-          <textarea
+          <div
             v-else-if="draft.body.type === 'text' || draft.body.type === 'json'"
-            v-model="draft.body.value"
-            spellcheck="false"
-          />
+            class="body-text-editor"
+          >
+            <textarea
+              v-model="draft.body.value"
+              :class="{ 'is-invalid': Boolean(jsonBodySyntaxError) }"
+              :aria-describedby="jsonBodySyntaxError ? 'request-json-error' : undefined"
+              :aria-invalid="Boolean(jsonBodySyntaxError)"
+              :aria-label="
+                draft.body.type === 'json' ? t('request.jsonBody') : t('request.bodyText')
+              "
+              spellcheck="false"
+            />
+            <p
+              v-if="jsonBodySyntaxError"
+              id="request-json-error"
+              class="json-syntax-error"
+              aria-live="polite"
+            >
+              {{ t("request.invalidJson", { message: jsonBodySyntaxError }) }}
+            </p>
+          </div>
           <div v-else class="editor-placeholder">
             <Braces :size="22" />
             <span>{{ t("request.noBody") }}</span>

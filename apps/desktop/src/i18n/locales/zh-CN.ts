@@ -85,6 +85,8 @@ export default {
     bodyTextContent: "文本内容",
     bodyOther: "其他",
     noBody: "此请求不包含正文。",
+    jsonBody: "JSON 正文",
+    invalidJson: "JSON 格式无效：{message}",
     authType: "认证类型",
     authNone: "无",
     authInherit: "继承",

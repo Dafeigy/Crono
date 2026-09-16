@@ -86,6 +86,8 @@ export default {
     bodyTextContent: "Text Content",
     bodyOther: "Other",
     noBody: "This request has no body.",
+    jsonBody: "JSON body",
+    invalidJson: "Invalid JSON: {message}",
     authType: "Authentication type",
     authNone: "None",
     authInherit: "Inherit",
