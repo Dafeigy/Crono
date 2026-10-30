@@ -36,7 +36,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeydown));
       </div>
       <h2 id="about-dialog-title">{{ t("about.title") }}</h2>
       <p>{{ t("about.description") }}</p>
-      <span>{{ t("about.version", { version: "0.1.2" }) }}</span>
+      <span>{{ t("about.version", { version: "0.2.1" }) }}</span>
     </section>
   </div>
 </template>
